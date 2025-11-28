@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>POS Umañita</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* UX SENIOR: Letras grandes y alto contraste para adultos mayores */
+        body { font-size: 1.2rem; background-color: #f8f9fa; }
+        .card-producto { cursor: pointer; transition: transform 0.2s; border: 2px solid #ddd; }
+        .card-producto:active { transform: scale(0.95); border-color: #28a745; background-color: #e6ffec; }
+        /* Efecto Hover para que sepan que es clickeable */
+        .card-producto:hover { border-color: #0d6efd; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+        
+        .precio-badge { font-size: 1.4rem; font-weight: bold; color: #dc3545; }
+        .total-display { font-size: 2.5rem; font-weight: bold; color: #0d6efd; text-align: right; }
+        
+        /* Botones grandes en la tabla */
+        .btn-cant { width: 40px; height: 40px; font-weight: bold; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-md-7">
+            <h2 class="mb-4">🍗 Menú Principal</h2>
+            <div class="row g-3" id="catalogo">
+                {% for p in productos %}
+                <div class="col-md-4 col-6">
+                    <div class="card card-producto h-100 shadow-sm p-3 text-center btn-agregar-producto" 
+                         role="button"
+                         data-id="{{ p.id }}"
+                         data-nombre="{{ p.nombre }}"
+                         data-precio="{{ p.precio }}">
+                         
+                        <div style="height: 80px; background: #eee; border-radius: 10px; margin-bottom:10px;">
+                            <span class="d-flex align-items-center justify-content-center h-100 text-muted">FOTO</span>
+                        </div>
+                        <h4 class="card-title">{{ p.nombre }}</h4>
+                        <div class="precio-badge">${{ p.precio }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="col-md-5">
+            <div class="card shadow h-100">
+                <div class="card-header bg-dark text-white">
+                    <h3>📋 La Orden</h3>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="table-responsive flex-grow-1">
+                        <table class="table table-striped" style="font-size: 1.1rem;">
+                            <thead>
+                                <tr>
+                                    <th>Prod.</th>
+                                    <th>Cant.</th>
+                                    <th>Subtotal</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-carrito">
+                                </tbody>
+                        </table>
+                    </div>
+                    
+                    <hr>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h3>TOTAL A PAGAR:</h3>
+                        <div id="total-pagar" class="total-display">$0</div>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-3">
+                        <button class="btn btn-success btn-lg py-4 fs-2" onclick="abrirModalPago()">
+                            💰 COBRAR
+                        </button>
+                        <button class="btn btn-danger btn-lg" onclick="limpiarCarrito()">
+                            🗑️ CANCELAR ORDEN
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPago" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h2 class="modal-title">💸 Finalizar Venta</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">Total a Pagar:</label>
+                        <input type="text" id="modal-total" class="form-control form-control-lg fw-bold text-end" readonly style="font-size: 2rem;">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-primary">¿Con cuánto paga? (Efectivo):</label>
+                        <input type="number" id="input-recibido" class="form-control form-control-lg fw-bold text-end border-primary" 
+                               style="font-size: 2rem; background-color: #e7f1ff;" 
+                               onkeyup="calcularVueltas()" placeholder="0">
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-3 text-center" id="alerta-vueltas" style="display:none;">
+                    <span class="fs-3">VUELTAS: </span>
+                    <span class="fs-1 fw-bold text-dark" id="txt-vueltas">$0</span>
+                </div>
+
+                <hr>
+                <h4>Otros Métodos (Opcional - Pago Mixto)</h4>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label>Nequi</label>
+                        <input type="number" id="pago-nequi" class="form-control" placeholder="0" onkeyup="calcularVueltas()">
+                    </div>
+                    <div class="col-6">
+                        <label>Daviplata</label>
+                        <input type="number" id="pago-daviplata" class="form-control" placeholder="0" onkeyup="calcularVueltas()">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Volver</button>
+                <button type="button" class="btn btn-success btn-lg px-5 fs-3" onclick="confirmarVenta()">✅ CONFIRMAR</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let carrito = [];
+
+    // --- NUEVO: Escucha de eventos seguro (El FIX del error) ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const botones = document.querySelectorAll('.btn-agregar-producto');
+        
+        botones.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Parseamos los datos del atributo data-*
+                const id = parseInt(this.dataset.id);
+                const nombre = this.dataset.nombre;
+                const precio = parseInt(this.dataset.precio);
+                
+                // Llamamos a la lógica del carrito
+                agregarAlCarrito(id, nombre, precio);
+            });
+        });
+    });
+
+    // --- LÓGICA DE NEGOCIO ---
+
+    function agregarAlCarrito(id, nombre, precio) {
+        const existe = carrito.find(item => item.id === id);
+        if (existe) {
+            existe.cantidad++;
+        } else {
+            carrito.push({ id, nombre, precio, cantidad: 1 });
+        }
+        renderizarCarrito();
+    }
+
+    function renderizarCarrito() {
+        const tbody = document.getElementById('tabla-carrito');
+        tbody.innerHTML = '';
+        let total = 0;
+
+        carrito.forEach((item, index) => {
+            const subtotal = item.precio * item.cantidad;
+            total += subtotal;
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.nombre}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary btn-cant" onclick="cambiarCant(${index}, -1)">-</button>
+                        <span class="mx-2 fw-bold">${item.cantidad}</span>
+                        <button class="btn btn-sm btn-outline-secondary btn-cant" onclick="cambiarCant(${index}, 1)">+</button>
+                    </td>
+                    <td>$${subtotal.toLocaleString()}</td>
+                    <td><button class="btn btn-sm btn-danger" onclick="eliminarItem(${index})">X</button></td>
+                </tr>
+            `;
+        });
+        document.getElementById('total-pagar').innerText = '$' + total.toLocaleString();
+        document.getElementById('modal-total').value = total; // Valor numérico para cálculos
+    }
+
+    function cambiarCant(index, delta) {
+        carrito[index].cantidad += delta;
+        if (carrito[index].cantidad <= 0) carrito.splice(index, 1);
+        renderizarCarrito();
+    }
+    
+    function eliminarItem(index) {
+        carrito.splice(index, 1);
+        renderizarCarrito();
+    }
+
+    function limpiarCarrito() {
+        if(confirm('¿Borrar toda la orden?')) {
+            carrito = [];
+            renderizarCarrito();
+        }
+    }
+
+    function abrirModalPago() {
+        if (carrito.length === 0) return alert('El carrito está vacío');
+        const modal = new bootstrap.Modal(document.getElementById('modalPago'));
+        modal.show();
+        
+        // Reset inputs
+        document.getElementById('input-recibido').value = '';
+        document.getElementById('pago-nequi').value = '';
+        document.getElementById('pago-daviplata').value = '';
+        document.getElementById('alerta-vueltas').style.display = 'none';
+        
+        // UX: Auto-focus en el campo de efectivo
+        setTimeout(() => document.getElementById('input-recibido').focus(), 500);
+    }
+
+    function calcularVueltas() {
+        const total = parseInt(document.getElementById('modal-total').value) || 0;
+        const efectivo = parseInt(document.getElementById('input-recibido').value) || 0;
+        const nequi = parseInt(document.getElementById('pago-nequi').value) || 0;
+        const davi = parseInt(document.getElementById('pago-daviplata').value) || 0;
+
+        const pagadoTotal = efectivo + nequi + davi;
+        const vueltas = pagadoTotal - total;
+
+        const divVueltas = document.getElementById('alerta-vueltas');
+        const txtVueltas = document.getElementById('txt-vueltas');
+
+        if (pagadoTotal >= total) {
+            divVueltas.style.display = 'block';
+            divVueltas.className = 'alert alert-success mt-3 text-center';
+            // Si las vueltas son positivas, mostrar. Si es 0 (exacto), también.
+            txtVueltas.innerText = '$' + vueltas.toLocaleString();
+        } else {
+            divVueltas.style.display = 'block';
+            divVueltas.className = 'alert alert-danger mt-3 text-center';
+            txtVueltas.innerText = 'FALTAN: $' + (total - pagadoTotal).toLocaleString();
+        }
+    }
+
+    function confirmarVenta() {
+        const total = parseInt(document.getElementById('modal-total').value);
+        const efectivo = parseInt(document.getElementById('input-recibido').value) || 0;
+        const nequi = parseInt(document.getElementById('pago-nequi').value) || 0;
+        const davi = parseInt(document.getElementById('pago-daviplata').value) || 0;
+
+        if ((efectivo + nequi + davi) < total) {
+            alert('❌ El pago no cubre el total de la venta.');
+            return;
+        }
+
+        // Enviar al Backend
+        fetch('/ventas/guardar_venta', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                carrito: carrito,
+                total: total,
+                pagos: { efectivo, nequi, daviplata: davi },
+                tipo: 'Directa' 
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.status === 'ok'){
+                alert('✅ ¡Venta Registrada Exitosamente!');
+                location.reload(); 
+            } else {
+                alert('⚠️ Error al guardar: ' + (data.mensaje || 'Error desconocido'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Error de conexión con el servidor');
+        });
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

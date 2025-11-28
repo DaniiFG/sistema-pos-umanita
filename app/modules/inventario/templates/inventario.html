@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inventario / Bodega</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-primary mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand fs-2" href="#">📦 Bodega Umañita</a>
+        <div>
+            <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
+            <a href="/gastos" class="btn btn-outline-light">Ir a Gastos</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="mb-4 text-end">
+        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#formCrear">
+            + Nuevo Producto en Bodega
+        </button>
+    </div>
+
+    <div class="collapse mb-4" id="formCrear">
+        <div class="card card-body">
+            <form action="{{ url_for('inventario.crear_insumo') }}" method="POST" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" name="nombre" class="form-control" placeholder="Nombre (Ej: Aceite)" required>
+                </div>
+                <div class="col-md-3">
+                    <select name="unidad" class="form-select">
+                        <option value="Unidades">Unidades</option>
+                        <option value="Litros">Litros</option>
+                        <option value="Libras">Libras</option>
+                        <option value="Cajas">Cajas</option>
+                        <option value="Bultos">Bultos</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="number" name="minimo" class="form-control" placeholder="Alerta Mínima (Ej: 5)">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {% for item in insumos %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm h-100 border-{{ 'danger' if item.cantidad_actual <= item.minimo_alerta else 'success' }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ item.nombre }}</h4>
+                    <span class="badge bg-light text-dark fs-5">{{ item.cantidad_actual }} {{ item.unidad }}</span>
+                </div>
+                <div class="card-body">
+                    {% if item.cantidad_actual <= item.minimo_alerta %}
+                        <div class="alert alert-danger p-1 text-center mb-2">⚠️ Stock Bajo</div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success w-50 py-3 fw-bold" 
+                                onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'ENTRADA')">
+                            📥 LLEGÓ<br>PEDIDO
+                        </button>
+                        
+                        <button class="btn btn-danger w-50 py-3 fw-bold" 
+                                onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'SALIDA')">
+                            📤 SACAR<br>A COCINA
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+            <div class="text-center mt-5 text-muted">
+                <h3>La bodega está vacía.</h3>
+                <p>Usa el botón "Nuevo Producto" para empezar.</p>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalMovimiento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('inventario.movimiento') }}" method="POST">
+                <div class="modal-header text-white" id="modal-header-bg">
+                    <h5 class="modal-title fs-3">Registrar Movimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h3 class="text-center mb-4" id="modal-titulo-accion"></h3>
+                    
+                    <input type="hidden" name="insumo_id" id="input-id">
+                    <input type="hidden" name="tipo" id="input-tipo">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fs-4">Cantidad</label>
+                        <input type="number" name="cantidad" class="form-control form-control-lg" required min="1" autofocus>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nota (Opcional)</label>
+                        <input type="text" name="nota" class="form-control" placeholder="Ej: Factura 123">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-lg" id="btn-submit">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function abrirModal(id, nombre, tipo) {
+        document.getElementById('input-id').value = id;
+        document.getElementById('input-tipo').value = tipo;
+        
+        const header = document.getElementById('modal-header-bg');
+        const titulo = document.getElementById('modal-titulo-accion');
+        const btn = document.getElementById('btn-submit');
+        const modalEl = new bootstrap.Modal(document.getElementById('modalMovimiento'));
+        
+        if (tipo === 'ENTRADA') {
+            header.className = 'modal-header text-white bg-success';
+            titulo.innerText = 'Llegó mas: ' + nombre;
+            btn.className = 'btn btn-success btn-lg w-100';
+            btn.innerText = 'Registrar Entrada';
+        } else {
+            header.className = 'modal-header text-white bg-danger';
+            titulo.innerText = 'Sacar de bodega: ' + nombre;
+            btn.className = 'btn btn-danger btn-lg w-100';
+            btn.innerText = 'Registrar Salida';
+        }
+        
+        modalEl.show();
+    }
+</script>
+
+</body>
+</html>
