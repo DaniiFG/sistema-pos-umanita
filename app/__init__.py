@@ -1,22 +1,34 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
 from config import Config
 
-# Inicializamos la extensión de BD
 db = SQLAlchemy()
+login_manager = LoginManager()
+login_manager.login_view = 'auth.login' # A dónde ir si no está logueado
+login_manager.login_message = "Debes iniciar sesión para ver esto."
+login_manager.login_message_category = "warning"
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
     db.init_app(app)
+    login_manager.init_app(app)
 
-    # Registro de Blueprints (Módulos)
-    # Nota: Importamos aquí para evitar referencias circulares
+    # Cargar usuario para Flask-Login
+    from app.models import Usuario
+    @login_manager.user_loader
+    def load_user(user_id):
+        return Usuario.query.get(int(user_id))
+
+    # Blueprints
+    from app.modules.auth.routes import auth_bp
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+
     from app.modules.ventas.routes import ventas_bp
     app.register_blueprint(ventas_bp, url_prefix='/ventas')
     
-    # Aquí registraremos inventario, gastos, etc. en el futuro
     from app.modules.gastos.routes import gastos_bp
     app.register_blueprint(gastos_bp, url_prefix='/gastos')
     
@@ -26,7 +38,7 @@ def create_app():
     from app.modules.informes.routes import informes_bp
     app.register_blueprint(informes_bp, url_prefix='/informes')
     
-    with app.app_context():
-        db.create_all()  # Crea las tablas si no existen
-
+    from app.modules.productos.routes import productos_bp
+    app.register_blueprint(productos_bp, url_prefix='/productos')
+    
     return app

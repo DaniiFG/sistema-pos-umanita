@@ -2,105 +2,252 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Informes Umañita</title>
+    <title>Informes Gerenciales</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .kpi-card { border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .kpi-titulo { font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
-        .kpi-valor { font-size: 3rem; font-weight: 800; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-radius: 8px; }
+        .nav-tabs .nav-link { color: #495057; font-weight: 600; }
+        .nav-tabs .nav-link.active { color: #0d6efd; border-top: 3px solid #0d6efd; }
+        .table-header-dark { background-color: #343a40; color: white; }
+        .amount { font-family: 'Consolas', monospace; font-weight: bold; }
+        .bg-gradient-primary { background: linear-gradient(45deg, #007bff, #0056b3); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #28a745, #1e7e34); color: white; }
+        .bg-gradient-danger { background: linear-gradient(45deg, #dc3545, #bd2130); color: white; }
     </style>
 </head>
-<body class="bg-light">
+<body>
 
-<nav class="navbar navbar-dark bg-dark mb-4">
+<nav class="navbar navbar-dark bg-dark mb-4 shadow-sm">
     <div class="container-fluid">
-        <a class="navbar-brand fs-2" href="#">📊 Informes Gerenciales</a>
+        <a class="navbar-brand" href="#"><i class="fas fa-chart-line"></i> INFORMES GERENCIALES</a>
         <div>
-            <a href="/ventas" class="btn btn-outline-light me-2">Ventas</a>
-            <a href="/gastos" class="btn btn-outline-light me-2">Gastos</a>
-            <a href="/inventario" class="btn btn-outline-light">Bodega</a>
+            <a href="/ventas" class="btn btn-sm btn-outline-light me-2">Ir a Ventas</a>
+            <a href="/gastos" class="btn btn-sm btn-outline-light me-2">Ir a Gastos</a>
+            <button onclick="window.print()" class="btn btn-sm btn-light fw-bold"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </div>
 </nav>
 
 <div class="container">
     
-    <div class="card p-3 mb-4 shadow-sm">
-        <form method="POST" class="row align-items-center">
-            <div class="col-auto">
-                <label class="fw-bold fs-5">Ver informe del día:</label>
+    <!-- BARRA DE FILTROS -->
+    <div class="card p-4 mb-4">
+        <form method="POST" class="row align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Fecha Inicio</label>
+                <input type="date" name="fecha_inicio" class="form-control" value="{{ f_inicio }}">
             </div>
-            <div class="col-auto">
-                <input type="date" name="fecha" class="form-control form-control-lg" value="{{ fecha }}">
+            <div class="col-md-4">
+                <label class="form-label fw-bold">Fecha Fin</label>
+                <input type="date" name="fecha_fin" class="form-control" value="{{ f_fin }}">
             </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-primary btn-lg">🔍 Buscar</button>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Generar Reporte</button>
             </div>
         </form>
     </div>
 
-    <div class="row g-4 text-center mb-5">
+    <!-- PESTAÑAS DE INFORMES -->
+    <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ventas">1. DETALLE VENTAS</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#gastos">2. DETALLE GASTOS</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#balance">3. BALANCE (CAJA)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pyg">4. ESTADO RESULTADOS (P&G)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
         
-        <div class="col-md-4">
-            <div class="card kpi-card bg-white text-success">
-                <div class="card-body py-4">
-                    <div class="kpi-titulo text-secondary">Ventas Totales</div>
-                    <div class="kpi-valor">${{ ventas }}</div>
+        <!-- 1. INFORME DE VENTAS -->
+        <div class="tab-pane fade show active" id="ventas">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="card bg-gradient-primary p-3 h-100">
+                        <h6>Ventas Totales</h6>
+                        <h3 class="amount">${{ "{:,.0f}".format(total_ventas) }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="card p-3 h-100">
+                        <h6 class="text-muted">Desglose por Medio de Pago</h6>
+                        <div class="d-flex justify-content-around mt-2">
+                            <div class="text-center">
+                                <small>Efectivo</small><br>
+                                <span class="fw-bold fs-5">${{ "{:,.0f}".format(efectivo) }}</span>
+                            </div>
+                            <div class="text-center border-start border-end px-4">
+                                <small>Nequi</small><br>
+                                <span class="fw-bold fs-5 text-primary">${{ "{:,.0f}".format(nequi) }}</span>
+                            </div>
+                            <div class="text-center">
+                                <small>Daviplata</small><br>
+                                <span class="fw-bold fs-5 text-danger">${{ "{:,.0f}".format(davi) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header table-header-dark">Productos Vendidos</div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-end">Ingresos Generados</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in productos %}
+                            <tr>
+                                <td>{{ p.producto_nombre }}</td>
+                                <td class="text-center">{{ p.cantidad }}</td>
+                                <td class="text-end amount">${{ "{:,.0f}".format(p.dinero) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card kpi-card bg-white text-danger">
-                <div class="card-body py-4">
-                    <div class="kpi-titulo text-secondary">Gastos Totales</div>
-                    <div class="kpi-valor">${{ gastos }}</div>
+        <!-- 2. INFORME DE GASTOS -->
+        <div class="tab-pane fade" id="gastos">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="card bg-gradient-danger p-3 h-100">
+                        <h6>Total Egresos</h6>
+                        <h3 class="amount">${{ "{:,.0f}".format(total_gastos) }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="card p-3 h-100">
+                        <h6 class="text-muted">Gastos por Categoría</h6>
+                        <div class="row">
+                            {% for cat in gastos_cat %}
+                            <div class="col-md-4 mb-2">
+                                <span class="badge bg-secondary">{{ cat.categoria }}</span>
+                                <span class="amount ms-2">${{ "{:,.0f}".format(cat[1]) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header table-header-dark">Registro Detallado de Egresos</div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Concepto</th>
+                                <th>Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in lista_gastos %}
+                            <tr>
+                                <td>{{ g.fecha.strftime('%d/%m/%Y') }}</td>
+                                <td><span class="badge bg-light text-dark border">{{ g.categoria }}</span></td>
+                                <td>{{ g.descripcion }}</td>
+                                <td class="text-end amount text-danger">${{ "{:,.0f}".format(g.monto) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card kpi-card text-white {{ 'bg-success' if balance >= 0 else 'bg-danger' }}">
-                <div class="card-body py-4">
-                    <div class="kpi-titulo">Ganancia / Pérdida</div>
-                    <div class="kpi-valor">${{ balance }}</div>
+        <!-- 3. INFORME DE BALANCE (CAJA) -->
+        <div class="tab-pane fade" id="balance">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card shadow">
+                        <div class="card-header bg-dark text-white text-center">
+                            <h5>FLUJO DE CAJA (Dinero Real)</h5>
+                        </div>
+                        <div class="card-body p-5">
+                            <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+                                <span class="fs-5">Total Ingresos (Ventas)</span>
+                                <span class="fs-5 amount text-success">+ ${{ "{:,.0f}".format(total_ventas) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-4 border-bottom pb-2">
+                                <span class="fs-5">Total Egresos (Gastos Pagados)</span>
+                                <span class="fs-5 amount text-danger">- ${{ "{:,.0f}".format(total_gastos) }}</span>
+                            </div>
+                            
+                            <div class="alert {{ 'alert-success' if balance >= 0 else 'alert-danger' }} text-center">
+                                <h6>DINERO DISPONIBLE (CAJA TEÓRICA)</h6>
+                                <h1 class="amount">${{ "{:,.0f}".format(balance) }}</h1>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- 4. ESTADO DE RESULTADOS (P&G) -->
+        <div class="tab-pane fade" id="pyg">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Este informe calcula la rentabilidad usando el <strong>Costo de Referencia</strong> configurado en los productos, no el inventario físico.
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered bg-white shadow-sm">
+                    <thead class="bg-secondary text-white text-center">
+                        <tr>
+                            <th colspan="3">ESTADO DE RESULTADOS ({{ f_inicio }} al {{ f_fin }})</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold"> (+) INGRESOS OPERACIONALES</td>
+                            <td>Ventas Totales</td>
+                            <td class="text-end amount">${{ "{:,.0f}".format(total_ventas) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold text-danger"> (-) COSTO DE VENTA</td>
+                            <td>Costo de la mercancía (Estimado)</td>
+                            <td class="text-end amount text-danger">- ${{ "{:,.0f}".format(costo_ventas) }}</td>
+                        </tr>
+                        <tr class="table-secondary">
+                            <td class="fw-bold fs-5"> (=) UTILIDAD BRUTA</td>
+                            <td>Ganancia sobre el producto</td>
+                            <td class="text-end amount fw-bold fs-5">${{ "{:,.0f}".format(utilidad_bruta) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold text-danger"> (-) GASTOS OPERACIONALES</td>
+                            <td>Nómina, Servicios, Arriendo, Etc.</td>
+                            <td class="text-end amount text-danger">- ${{ "{:,.0f}".format(total_gastos) }}</td>
+                        </tr>
+                        <tr class="{{ 'table-success' if utilidad_neta >= 0 else 'table-danger' }}">
+                            <td class="fw-bold fs-4"> (=) UTILIDAD NETA</td>
+                            <td>Ganancia/Pérdida real del negocio</td>
+                            <td class="text-end amount fw-bold fs-4">${{ "{:,.0f}".format(utilidad_neta) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
-
-    <div class="row">
-        <div class="col-md-6 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h3 class="mb-0">💰 Arqueo de Caja (Dinero Real)</h3>
-                    <small>Esto es lo que debe haber físicamente</small>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush fs-4">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            💵 Efectivo
-                            <span class="fw-bold text-dark">${{ pagos.efectivo }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            📱 Nequi
-                            <span class="fw-bold text-primary">${{ pagos.nequi }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            📱 Daviplata
-                            <span class="fw-bold text-danger">${{ pagos.davi }}</span>
-                        </li>
-                        <li class="list-group-item bg-light d-flex justify-content-between align-items-center fw-bold mt-2">
-                            TOTAL VENTAS
-                            <span>${{ ventas }}</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

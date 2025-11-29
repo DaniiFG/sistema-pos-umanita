@@ -1,0 +1,30 @@
+<div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm h-100 border-{{ 'danger' if item.cantidad_actual <= item.minimo_alerta else 'secondary' }}">
+        <div class="card-header d-flex justify-content-between align-items-center bg-white">
+            <h5 class="mb-0 text-dark fw-bold">{{ item.nombre }}</h5>
+            {% if item.cantidad_actual <= item.minimo_alerta %}
+                <i class="fas fa-exclamation-triangle text-danger fs-4" title="Stock Bajo"></i>
+            {% endif %}
+        </div>
+        <div class="card-body text-center">
+            <h2 class="display-4 fw-bold {{ 'text-danger' if item.cantidad_actual <= item.minimo_alerta else 'text-dark' }}">
+                {{ "{0:g}".format(item.cantidad_actual) }}
+            </h2>
+            <p class="text-muted text-uppercase fw-bold">{{ item.unidad }}</p>
+            
+            <hr>
+            
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-success w-50 fw-bold" 
+                        onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'ENTRADA')">
+                    <i class="fas fa-plus"></i> ENTRADA
+                </button>
+                
+                <button class="btn btn-outline-danger w-50 fw-bold" 
+                        onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'SALIDA')">
+                    <i class="fas fa-minus"></i> SALIDA
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

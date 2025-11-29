@@ -2,116 +2,169 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Inventario / Bodega</title>
+    <title>Bodega Umañita</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-dark bg-primary mb-4">
     <div class="container-fluid">
-        <a class="navbar-brand fs-2" href="#">📦 Bodega Umañita</a>
+        <a class="navbar-brand fs-3" href="#">📦 Bodega Umañita</a>
         <div>
             <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
-            <a href="/gastos" class="btn btn-outline-light">Ir a Gastos</a>
+            <a href="/gastos" class="btn btn-outline-light me-2">Ir a Gastos</a>
+            <a href="{{ url_for('inventario.historial') }}" class="btn btn-warning fw-bold text-dark">📜 Ver Historial Completo</a>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    <div class="mb-4 text-end">
-        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#formCrear">
-            + Nuevo Producto en Bodega
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="text-secondary">Control de Existencias</h4>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#formCrear">
+            <i class="fas fa-plus-circle"></i> Nuevo Producto/Activo
         </button>
     </div>
 
+    <!-- FORMULARIO CREAR -->
     <div class="collapse mb-4" id="formCrear">
-        <div class="card card-body">
+        <div class="card card-body shadow border-primary">
+            <h5 class="card-title text-primary">Registrar Nuevo Item en Sistema</h5>
             <form action="{{ url_for('inventario.crear_insumo') }}" method="POST" class="row g-3">
                 <div class="col-md-4">
-                    <input type="text" name="nombre" class="form-control" placeholder="Nombre (Ej: Aceite)" required>
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" class="form-control" placeholder="Ej: Jabón Rey" required>
                 </div>
                 <div class="col-md-3">
-                    <select name="unidad" class="form-select">
-                        <option value="Unidades">Unidades</option>
-                        <option value="Litros">Litros</option>
-                        <option value="Libras">Libras</option>
-                        <option value="Cajas">Cajas</option>
-                        <option value="Bultos">Bultos</option>
+                    <label>Categoría</label>
+                    <select name="categoria" class="form-select">
+                        <option value="Materia Prima">Materia Prima (Pollo/Papa)</option>
+                        <option value="Desechables">Desechables (Cajas/Bolsas)</option>
+                        <option value="Aseo">Aseo y Limpieza</option>
+                        <option value="Activos">Activos Fijos (Mesas/Equipos)</option>
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <input type="number" name="minimo" class="form-control" placeholder="Alerta Mínima (Ej: 5)">
+                <div class="col-md-2">
+                    <label>Unidad</label>
+                    <select name="unidad" class="form-select">
+                        <option value="Unidades">Unidades</option>
+                        <option value="Paquetes">Paquetes</option>
+                        <option value="Libras">Libras</option>
+                        <option value="Galones">Galones</option>
+                        <option value="Bultos">Bultos</option>
+                        <option value="Cajas">Cajas</option>
+                    </select>
                 </div>
                 <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Crear</button>
+                    <label>Alerta Mínima</label>
+                    <input type="number" name="minimo" class="form-control" value="5">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">Crear</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div class="row g-3">
-        {% for item in insumos %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm h-100 border-{{ 'danger' if item.cantidad_actual <= item.minimo_alerta else 'success' }}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">{{ item.nombre }}</h4>
-                    <span class="badge bg-light text-dark fs-5">{{ item.cantidad_actual }} {{ item.unidad }}</span>
-                </div>
-                <div class="card-body">
-                    {% if item.cantidad_actual <= item.minimo_alerta %}
-                        <div class="alert alert-danger p-1 text-center mb-2">⚠️ Stock Bajo</div>
-                    {% endif %}
-                    
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-success w-50 py-3 fw-bold" 
-                                onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'ENTRADA')">
-                            📥 LLEGÓ<br>PEDIDO
-                        </button>
-                        
-                        <button class="btn btn-danger w-50 py-3 fw-bold" 
-                                onclick="abrirModal({{ item.id }}, '{{ item.nombre }}', 'SALIDA')">
-                            📤 SACAR<br>A COCINA
-                        </button>
-                    </div>
-                </div>
+    <!-- PESTAÑAS DE CATEGORÍAS -->
+    <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="materia-tab" data-bs-toggle="tab" data-bs-target="#materia" type="button">🍗 Materia Prima</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="desechables-tab" data-bs-toggle="tab" data-bs-target="#desechables" type="button">🥡 Desechables</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="aseo-tab" data-bs-toggle="tab" data-bs-target="#aseo" type="button">🧹 Aseo</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold text-dark" id="activos-tab" data-bs-toggle="tab" data-bs-target="#activos" type="button">🏢 Activos Fijos</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="myTabContent">
+        <!-- MATERIA PRIMA -->
+        <div class="tab-pane fade show active" id="materia">
+            <div class="row g-3">
+                {% for item in insumos if item.categoria == 'Materia Prima' %}
+                    {% include 'item_card.html' %}
+                {% else %}
+                    <p class="text-muted p-3">No hay materia prima registrada.</p>
+                {% endfor %}
             </div>
         </div>
-        {% else %}
-            <div class="text-center mt-5 text-muted">
-                <h3>La bodega está vacía.</h3>
-                <p>Usa el botón "Nuevo Producto" para empezar.</p>
+        
+        <!-- DESECHABLES -->
+        <div class="tab-pane fade" id="desechables">
+            <div class="row g-3">
+                {% for item in insumos if item.categoria == 'Desechables' %}
+                    {% include 'item_card.html' %}
+                {% endfor %}
             </div>
-        {% endfor %}
+        </div>
+
+        <!-- ASEO -->
+        <div class="tab-pane fade" id="aseo">
+            <div class="row g-3">
+                {% for item in insumos if item.categoria == 'Aseo' %}
+                    {% include 'item_card.html' %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ACTIVOS -->
+        <div class="tab-pane fade" id="activos">
+            <div class="alert alert-info"><i class="fas fa-info-circle"></i> Aquí registras mesas, sillas, neveras y vajilla.</div>
+            <div class="row g-3">
+                {% for item in insumos if item.categoria == 'Activos' %}
+                    {% include 'item_card.html' %}
+                {% endfor %}
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- MODAL DE MOVIMIENTO -->
 <div class="modal fade" id="modalMovimiento" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{{ url_for('inventario.movimiento') }}" method="POST">
                 <div class="modal-header text-white" id="modal-header-bg">
-                    <h5 class="modal-title fs-3">Registrar Movimiento</h5>
+                    <h5 class="modal-title fs-4" id="modal-titulo">Registrar</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <h3 class="text-center mb-4" id="modal-titulo-accion"></h3>
-                    
                     <input type="hidden" name="insumo_id" id="input-id">
                     <input type="hidden" name="tipo" id="input-tipo">
                     
                     <div class="mb-3">
-                        <label class="form-label fs-4">Cantidad</label>
-                        <input type="number" name="cantidad" class="form-control form-control-lg" required min="1" autofocus>
+                        <label class="form-label fs-5">Cantidad</label>
+                        <input type="number" step="0.01" name="cantidad" class="form-control form-control-lg text-center fw-bold" required autofocus>
+                    </div>
+
+                    <!-- Campo de Costo solo visible en entradas -->
+                    <div class="mb-3" id="div-costo">
+                        <label class="form-label text-success">Costo Total de Compra ($)</label>
+                        <input type="number" name="costo_unitario" class="form-control" placeholder="Opcional">
+                        <small class="text-muted">Si ingresas stock, ¿cuánto costó este lote?</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Nota (Opcional)</label>
-                        <input type="text" name="nota" class="form-control" placeholder="Ej: Factura 123">
+                        <label class="form-label">Observación / Lote</label>
+                        <input type="text" name="observacion" class="form-control" placeholder="Ej: Factura 123">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-lg" id="btn-submit">Confirmar</button>
+                    <button type="submit" class="btn btn-lg w-100" id="btn-submit">Confirmar</button>
                 </div>
             </form>
         </div>
@@ -125,20 +178,23 @@
         document.getElementById('input-tipo').value = tipo;
         
         const header = document.getElementById('modal-header-bg');
-        const titulo = document.getElementById('modal-titulo-accion');
+        const titulo = document.getElementById('modal-titulo');
         const btn = document.getElementById('btn-submit');
+        const divCosto = document.getElementById('div-costo');
         const modalEl = new bootstrap.Modal(document.getElementById('modalMovimiento'));
         
         if (tipo === 'ENTRADA') {
             header.className = 'modal-header text-white bg-success';
-            titulo.innerText = 'Llegó mas: ' + nombre;
+            titulo.innerText = '📥 Ingresar a Bodega: ' + nombre;
             btn.className = 'btn btn-success btn-lg w-100';
             btn.innerText = 'Registrar Entrada';
+            divCosto.style.display = 'block';
         } else {
             header.className = 'modal-header text-white bg-danger';
-            titulo.innerText = 'Sacar de bodega: ' + nombre;
+            titulo.innerText = '📤 Sacar / Dar de Baja: ' + nombre;
             btn.className = 'btn btn-danger btn-lg w-100';
             btn.innerText = 'Registrar Salida';
+            divCosto.style.display = 'none';
         }
         
         modalEl.show();

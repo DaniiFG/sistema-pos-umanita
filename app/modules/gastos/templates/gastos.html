@@ -7,103 +7,132 @@
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-dark bg-danger mb-4">
+<nav class="navbar navbar-expand-lg navbar-dark bg-danger mb-4">
     <div class="container-fluid">
-        <a class="navbar-brand fs-2" href="#">📉 Gastos Umañita</a>
-        <a href="/ventas" class="btn btn-outline-light">Ir a Ventas (POS)</a>
+        <a class="navbar-brand fs-3" href="#">📉 Gastos Umañita</a>
+        <div class="d-flex">
+            <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
+            {% if current_user.rol == 'admin' %}
+            <a href="{{ url_for('gastos.conceptos') }}" class="btn btn-warning text-dark fw-bold">⚙️ Configurar Tipos de Gasto</a>
+            {% endif %}
+        </div>
     </div>
 </nav>
 
 <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <div class="row">
+        <!-- FORMULARIO DE REGISTRO -->
         <div class="col-md-4">
-            <div class="card shadow">
-                <div class="card-header bg-secondary text-white">
-                    <h4>Registrar Gasto</h4>
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Registrar Salida de Dinero</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('gastos.index') }}" method="POST">
                         <div class="mb-3">
-                            <label class="form-label">Categoría</label>
-                            <select class="form-select" name="categoria" id="selCategoria" onchange="toggleUnidades()" required>
-                                <option value="Materia Prima">Materia Prima (Pollo, Papa)</option>
-                                <option value="Nomina">Nómina / Turnos</option>
-                                <option value="Servicios">Servicios (Luz, Agua)</option>
-                                <option value="Operativos">Otros Operativos</option>
+                            <label class="form-label fw-bold">¿En qué se gastó?</label>
+                            <select class="form-select form-select-lg" name="concepto_id" id="selConcepto" required onchange="verificarUnidad()">
+                                <option value="">Seleccione una opción...</option>
+                                {% for c in conceptos %}
+                                    <option value="{{ c.id }}" data-cat="{{ c.categoria }}">
+                                        {{ c.nombre }} ({{ c.categoria }})
+                                    </option>
+                                {% endfor %}
                             </select>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Descripción</label>
-                            <input type="text" class="form-control" name="descripcion" placeholder="Ej: 2 Bultos de Papa" required>
-                        </div>
 
-                        <div class="row g-2 mb-3" id="divUnidades">
+                        <!-- Campos para detalles físicos -->
+                        <div class="row g-2 mb-3 bg-light p-2 rounded border">
                             <div class="col-6">
-                                <label class="form-label">Cant.</label>
-                                <input type="number" class="form-control" name="cantidad" placeholder="0">
+                                <label class="form-label small">Cantidad (Opcional)</label>
+                                <input type="number" step="0.1" class="form-control" name="cantidad" placeholder="Ej: 2.5">
                             </div>
                             <div class="col-6">
-                                <label class="form-label">Unidad</label>
+                                <label class="form-label small">Unidad</label>
                                 <select class="form-select" name="unidad">
                                     <option value="">-</option>
                                     <option value="Bultos">Bultos</option>
                                     <option value="Libras">Libras</option>
+                                    <option value="Kilos">Kilos</option>
                                     <option value="Cajas">Cajas</option>
+                                    <option value="Paquetes">Paquetes</option>
+                                    <option value="Galones">Galones</option>
                                     <option value="Unidades">Unidades</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Valor ($)</label>
-                            <input type="number" class="form-control form-control-lg" name="monto" placeholder="0" required>
+                            <label class="form-label fw-bold">Valor Pagado ($)</label>
+                            <input type="number" class="form-control form-control-lg border-danger" name="monto" placeholder="0" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nota Adicional (Opcional)</label>
+                            <input type="text" class="form-control" name="observacion" placeholder="Ej: Marca Premier, Juan el proveedor">
                         </div>
 
-                        <button type="submit" class="btn btn-danger w-100 btn-lg">Guardar Gasto</button>
+                        <button type="submit" class="btn btn-danger w-100 btn-lg">GUARDAR GASTO</button>
                     </form>
                 </div>
             </div>
         </div>
 
+        <!-- HISTORIAL -->
         <div class="col-md-8">
             <div class="card shadow">
-                <div class="card-header bg-white">
-                    <h4>Historial Reciente</h4>
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Últimos Movimientos</h5>
+                    <span class="badge bg-secondary">Mostrando últimos 50</span>
                 </div>
-                <div class="card-body p-0">
-                    <table class="table table-striped mb-0">
-                        <thead class="table-dark">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
                             <tr>
                                 <th>Fecha</th>
-                                <th>Descripción</th>
-                                <th>Categoría</th>
+                                <th>Concepto</th>
+                                <th>Detalle</th>
                                 <th>Monto</th>
-                                <th></th>
+                                {% if current_user.rol == 'admin' %}<th>Acción</th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for gasto in gastos %}
                             <tr>
-                                <td>{{ gasto.fecha.strftime('%d/%m %H:%M') }}</td>
+                                <td style="font-size: 0.9rem;">
+                                    {{ gasto.fecha.strftime('%d/%m') }}<br>
+                                    <small class="text-muted">{{ gasto.fecha.strftime('%H:%M') }}</small>
+                                </td>
                                 <td>
-                                    {{ gasto.descripcion }}
-                                    {% if gasto.cantidad %}
-                                        <span class="badge bg-info text-dark">{{ gasto.cantidad }} {{ gasto.unidad }}</span>
+                                    <span class="fw-bold">{{ gasto.descripcion }}</span>
+                                    {% if gasto.observacion %}
+                                        <br><small class="text-muted fst-italic">{{ gasto.observacion }}</small>
                                     {% endif %}
                                 </td>
-                                <td><span class="badge bg-secondary">{{ gasto.categoria }}</span></td>
-                                <td class="fw-bold text-danger">${{ gasto.monto }}</td>
                                 <td>
-                                    <a href="{{ url_for('gastos.eliminar', id=gasto.id) }}" 
-                                       class="btn btn-sm btn-outline-danger"
-                                       onclick="return confirm('¿Borrar este gasto?')">X</a>
+                                    {% if gasto.cantidad %}
+                                        <span class="badge bg-info text-dark">{{ gasto.cantidad }} {{ gasto.unidad }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
                                 </td>
+                                <td class="fw-bold text-danger fs-5">${{ "{:,.0f}".format(gasto.monto) }}</td>
+                                {% if current_user.rol == 'admin' %}
+                                <td>
+                                    <a href="{{ url_for('gastos.editar', id=gasto.id) }}" class="btn btn-sm btn-outline-primary">✏️</a>
+                                </td>
+                                {% endif %}
                             </tr>
                             {% else %}
-                            <tr>
-                                <td colspan="5" class="text-center p-4">No hay gastos registrados aún.</td>
-                            </tr>
+                            <tr><td colspan="5" class="text-center p-4">Sin registros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -112,21 +141,5 @@
         </div>
     </div>
 </div>
-
-<script>
-    // UX: Ocultar campos de "Unidad" si no es Materia Prima para no confundir
-    function toggleUnidades() {
-        const cat = document.getElementById('selCategoria').value;
-        const div = document.getElementById('divUnidades');
-        if (cat === 'Materia Prima') {
-            div.style.display = 'flex';
-        } else {
-            div.style.display = 'none';
-        }
-    }
-    // Ejecutar al inicio por si acaso
-    toggleUnidades();
-</script>
-
 </body>
 </html>

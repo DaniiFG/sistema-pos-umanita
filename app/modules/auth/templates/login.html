@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Acceso - Las Presas de Umañita</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #ffc107; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .card-login { width: 100%; max-width: 400px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .logo-text { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold; color: #d35400; }
+    </style>
+</head>
+<body>
+    <div class="card card-login bg-white p-4">
+        <div class="text-center mb-4">
+            <h2 class="logo-text">🍗 Umañita POS</h2>
+            <p class="text-muted">Inicia sesión para continuar</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Usuario</label>
+                <input type="text" name="username" class="form-control form-control-lg" required autofocus>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Contraseña</label>
+                <input type="password" name="password" class="form-control form-control-lg" required>
+            </div>
+            <button type="submit" class="btn btn-dark w-100 btn-lg">Ingresar</button>
+        </form>
+    </div>
+</body>
+</html>
