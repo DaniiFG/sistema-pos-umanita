@@ -5,80 +5,84 @@
     <title>POS Umañita</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* UX SENIOR: Letras grandes y alto contraste para adultos mayores */
-        body { font-size: 1.2rem; background-color: #f8f9fa; }
-        .card-producto { cursor: pointer; transition: transform 0.2s; border: 2px solid #ddd; }
-        .card-producto:active { transform: scale(0.95); border-color: #28a745; background-color: #e6ffec; }
-        /* Efecto Hover para que sepan que es clickeable */
-        .card-producto:hover { border-color: #0d6efd; box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+        body { font-size: 1.1rem; background-color: #f0f2f5; }
+        .card-producto { cursor: pointer; transition: all 0.2s; border: none; background: white; border-radius: 12px; overflow: hidden; }
+        .card-producto:active { transform: scale(0.95); background-color: #e6ffec; }
+        .card-producto:hover { box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15); transform: translateY(-3px); }
+        .precio-badge { font-size: 1.3rem; font-weight: 800; color: #dc3545; background: #fff0f0; padding: 5px 10px; border-radius: 8px; }
+        .total-display { font-size: 3rem; font-weight: 800; color: #2c3e50; text-align: right; letter-spacing: -1px; }
+        .btn-cant { width: 35px; height: 35px; font-weight: bold; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; }
+        .cat-header { background: #2c3e50; color: white; padding: 10px 15px; border-radius: 8px; margin-top: 20px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         
-        .precio-badge { font-size: 1.4rem; font-weight: bold; color: #dc3545; }
-        .total-display { font-size: 2.5rem; font-weight: bold; color: #0d6efd; text-align: right; }
-        
-        /* Botones grandes en la tabla */
-        .btn-cant { width: 40px; height: 40px; font-weight: bold; font-size: 1.2rem; }
+        @media print {
+            body * { visibility: hidden; }
+            #ticket-print, #ticket-print * { visibility: visible; }
+            #ticket-print { position: absolute; left: 0; top: 0; width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; color: black; background: white; display: block !important; }
+            .modal, .navbar, .container-fluid { display: none !important; }
+        }
+        #ticket-print { display: none; }
     </style>
 </head>
-<body>
+<body class="d-flex flex-column vh-100">
 
-<div class="container-fluid p-4">
-    <div class="row">
-        <div class="col-md-7">
-            <h2 class="mb-4">🍗 Menú Principal</h2>
-            <div class="row g-3" id="catalogo">
-                {% for p in productos %}
-                <div class="col-md-4 col-6">
-                    <div class="card card-producto h-100 shadow-sm p-3 text-center btn-agregar-producto" 
-                         role="button"
-                         data-id="{{ p.id }}"
-                         data-nombre="{{ p.nombre }}"
-                         data-precio="{{ p.precio }}">
-                         
-                        <div style="height: 80px; background: #eee; border-radius: 10px; margin-bottom:10px;">
-                            <span class="d-flex align-items-center justify-content-center h-100 text-muted">FOTO</span>
+<nav class="navbar navbar-expand-lg navbar-dark bg-danger shadow-sm px-3 flex-shrink-0">
+    <a class="navbar-brand fw-bold" href="#">🍗 Umañita POS</a>
+    <div class="ms-auto">
+        <a href="{{ url_for('ventas.historial') }}" class="btn btn-sm btn-outline-light me-1">📜 Historial Ventas</a>
+        {% if current_user.rol == 'admin' %}
+            <a href="/productos" class="btn btn-sm btn-outline-light me-1">🍔 Gestionar Menú</a>
+            
+            <a href="{{ url_for('ventas.ingresos_otros') }}" class="btn btn-sm btn-outline-light me-1">💰 Ingresos Extra</a>
+            <a href="/gastos" class="btn btn-sm btn-outline-light me-1">📉 Gastos</a>
+            <a href="/inventario" class="btn btn-sm btn-outline-light me-1">📦 Bodega</a>
+            <a href="/informes" class="btn btn-sm btn-outline-light me-1">📊 Informes</a>
+        {% endif %}
+        <a href="/gastos" class="btn btn-sm btn-warning fw-bold text-dark">💸 Gasto Rápido</a>
+        <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-dark ms-2">Salir</a>
+    </div>
+</nav>
+
+<div class="container-fluid flex-grow-1 p-3 overflow-hidden">
+    <div class="row h-100">
+        <div class="col-md-7 h-100 overflow-auto pb-5">
+            {% for categoria, items in productos|groupby('categoria') %}
+            <div class="cat-header">{{ categoria }}</div>
+            <div class="row g-3">
+                {% for p in items %}
+                <div class="col-md-4 col-sm-6">
+                    <div class="card card-producto h-100 shadow-sm p-2 text-center btn-agregar-producto" 
+                         role="button" data-id="{{ p.id }}" data-nombre="{{ p.nombre }}" data-precio="{{ p.precio }}">
+                        <div class="card-body p-1">
+                            <h6 class="card-title mb-2 fw-bold text-dark">{{ p.nombre }}</h6>
+                            <div class="precio-badge">${{ "{:,.0f}".format(p.precio) }}</div>
                         </div>
-                        <h4 class="card-title">{{ p.nombre }}</h4>
-                        <div class="precio-badge">${{ p.precio }}</div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
+            {% endfor %}
         </div>
 
-        <div class="col-md-5">
-            <div class="card shadow h-100">
-                <div class="card-header bg-dark text-white">
-                    <h3>📋 La Orden</h3>
+        <div class="col-md-5 h-100 d-flex flex-column">
+            <div class="card shadow h-100 border-0">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">📋 La Orden</h4>
+                    <span class="badge bg-warning text-dark" id="conteo-items">0 ítems</span>
                 </div>
-                <div class="card-body d-flex flex-column">
-                    <div class="table-responsive flex-grow-1">
-                        <table class="table table-striped" style="font-size: 1.1rem;">
-                            <thead>
-                                <tr>
-                                    <th>Prod.</th>
-                                    <th>Cant.</th>
-                                    <th>Subtotal</th>
-                                    <th>Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabla-carrito">
-                                </tbody>
-                        </table>
-                    </div>
-                    
-                    <hr>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3>TOTAL A PAGAR:</h3>
+                <div class="card-body p-0 flex-grow-1 overflow-auto bg-white">
+                    <table class="table table-striped align-middle mb-0">
+                        <thead class="table-light sticky-top"><tr><th>Prod.</th><th class="text-center">Cant.</th><th class="text-end">Total</th><th></th></tr></thead>
+                        <tbody id="tabla-carrito"></tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-light p-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fs-4 text-muted">Total a Pagar:</span>
                         <div id="total-pagar" class="total-display">$0</div>
                     </div>
-
-                    <div class="d-grid gap-2 mt-3">
-                        <button class="btn btn-success btn-lg py-4 fs-2" onclick="abrirModalPago()">
-                            💰 COBRAR
-                        </button>
-                        <button class="btn btn-danger btn-lg" onclick="limpiarCarrito()">
-                            🗑️ CANCELAR ORDEN
-                        </button>
+                    <div class="d-grid gap-2 d-md-flex">
+                        <button class="btn btn-danger flex-fill py-3" onclick="limpiarCarrito()">🗑️ CANCELAR</button>
+                        <button class="btn btn-success flex-fill py-3 fw-bold fs-4" onclick="abrirModalPago()">💰 COBRAR</button>
                     </div>
                 </div>
             </div>
@@ -90,200 +94,166 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h2 class="modal-title">💸 Finalizar Venta</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h4 class="modal-title">💸 Finalizar Venta</h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="row">
-                    <div class="col-6">
-                        <label class="form-label">Total a Pagar:</label>
-                        <input type="text" id="modal-total" class="form-control form-control-lg fw-bold text-end" readonly style="font-size: 2rem;">
+                    <div class="col-md-6 border-end">
+                        <h5 class="text-success mb-3">👤 Datos del Cliente</h5>
+                        <div class="mb-2"><label class="small">Nombre</label><input type="text" id="cli-nombre" class="form-control" value="Consumidor Final"></div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6"><label class="small">NIT</label><input type="text" id="cli-nit" class="form-control" value="222222222222"></div>
+                            <div class="col-6"><label class="small">Teléfono</label><input type="text" id="cli-tel" class="form-control"></div>
+                        </div>
+                        <div class="mb-2"><label class="small">Dirección</label><input type="text" id="cli-dir" class="form-control"></div>
+                        <div class="form-check mt-3 bg-warning bg-opacity-25 p-3 rounded border border-warning">
+                            <input class="form-check-input" type="checkbox" id="checkDomicilio" style="transform: scale(1.5); margin-right: 10px;">
+                            <label class="form-check-label fw-bold fs-5" for="checkDomicilio">🛵 ¿Es Domicilio?</label>
+                        </div>
                     </div>
-                    <div class="col-6">
-                        <label class="form-label text-primary">¿Con cuánto paga? (Efectivo):</label>
-                        <input type="number" id="input-recibido" class="form-control form-control-lg fw-bold text-end border-primary" 
-                               style="font-size: 2rem; background-color: #e7f1ff;" 
-                               onkeyup="calcularVueltas()" placeholder="0">
-                    </div>
-                </div>
-                
-                <div class="alert alert-warning mt-3 text-center" id="alerta-vueltas" style="display:none;">
-                    <span class="fs-3">VUELTAS: </span>
-                    <span class="fs-1 fw-bold text-dark" id="txt-vueltas">$0</span>
-                </div>
 
-                <hr>
-                <h4>Otros Métodos (Opcional - Pago Mixto)</h4>
-                <div class="row g-2">
-                    <div class="col-6">
-                        <label>Nequi</label>
-                        <input type="number" id="pago-nequi" class="form-control" placeholder="0" onkeyup="calcularVueltas()">
-                    </div>
-                    <div class="col-6">
-                        <label>Daviplata</label>
-                        <input type="number" id="pago-daviplata" class="form-control" placeholder="0" onkeyup="calcularVueltas()">
+                    <div class="col-md-6 ps-4">
+                        <label class="fw-bold">Total a Pagar:</label>
+                        <input type="text" id="modal-total" class="form-control form-control-lg fw-bold text-end bg-light mb-3" readonly style="font-size: 1.8rem;">
+                        <label class="text-primary">💵 Efectivo Recibido:</label>
+                        <input type="number" id="input-recibido" class="form-control form-control-lg fw-bold text-end border-primary mb-3" style="font-size: 1.5rem;" onkeyup="calcularVueltas()" placeholder="0">
+                        <div class="alert alert-secondary text-center py-2" id="info-vueltas">
+                            <small>Vueltas / Cambio:</small><br><span class="fs-2 fw-bold text-dark" id="txt-vueltas">$0</span>
+                        </div>
+                        <h6 class="border-top pt-2 mt-2">Otros Métodos</h6>
+                        <div class="row g-2">
+                            <div class="col-6"><input type="number" id="pago-nequi" class="form-control" placeholder="Nequi" onkeyup="calcularVueltas()"></div>
+                            <div class="col-6"><input type="number" id="pago-daviplata" class="form-control" placeholder="Daviplata" onkeyup="calcularVueltas()"></div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Volver</button>
-                <button type="button" class="btn btn-success btn-lg px-5 fs-3" onclick="confirmarVenta()">✅ CONFIRMAR</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Volver</button>
+                <button type="button" class="btn btn-primary btn-lg" onclick="guardarVenta(false)">💾 SOLO GUARDAR</button>
+                <button type="button" class="btn btn-success btn-lg fw-bold" onclick="guardarVenta(true)">🖨️ IMPRIMIR Y GUARDAR</button>
             </div>
         </div>
     </div>
 </div>
 
+<div id="ticket-print">
+    <div style="text-align: center; margin-bottom: 10px;">
+        <h3 style="margin:0;">POLLO UMAÑITA</h3>
+        <p style="margin:0;">NIT: 123456789-0</p>
+        <p style="margin:0;">Calle Falsa 123 - Bogotá</p>
+        <hr style="border-top: 1px dashed black;">
+    </div>
+    <div style="font-size: 11px;">
+        <strong>Fecha:</strong> <span id="print-fecha"></span><br>
+        <strong>Cliente:</strong> <span id="print-cliente"></span><br>
+        <strong>Dirección:</strong> <span id="print-dir"></span>
+    </div>
+    <hr style="border-top: 1px dashed black;">
+    <table style="width: 100%; font-size: 11px;">
+        <thead><tr><th align="left">Cant</th><th align="left">Desc</th><th align="right">Total</th></tr></thead>
+        <tbody id="print-items"></tbody>
+    </table>
+    <hr style="border-top: 1px dashed black;">
+    <div style="text-align: right; font-weight: bold;">TOTAL: <span id="print-total"></span></div>
+    <div style="text-align: center; margin-top: 15px;">*** GRACIAS POR SU COMPRA ***</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let carrito = [];
-
-    // --- NUEVO: Escucha de eventos seguro (El FIX del error) ---
-    document.addEventListener('DOMContentLoaded', function() {
-        const botones = document.querySelectorAll('.btn-agregar-producto');
-        
-        botones.forEach(btn => {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.btn-agregar-producto').forEach(btn => {
             btn.addEventListener('click', function() {
-                // Parseamos los datos del atributo data-*
-                const id = parseInt(this.dataset.id);
-                const nombre = this.dataset.nombre;
-                const precio = parseInt(this.dataset.precio);
-                
-                // Llamamos a la lógica del carrito
-                agregarAlCarrito(id, nombre, precio);
+                agregarAlCarrito(parseInt(this.dataset.id), this.dataset.nombre, parseInt(this.dataset.precio));
             });
         });
     });
 
-    // --- LÓGICA DE NEGOCIO ---
-
     function agregarAlCarrito(id, nombre, precio) {
-        const existe = carrito.find(item => item.id === id);
-        if (existe) {
-            existe.cantidad++;
-        } else {
-            carrito.push({ id, nombre, precio, cantidad: 1 });
-        }
+        let item = carrito.find(i => i.id === id);
+        if(item) item.cantidad++;
+        else carrito.push({id, nombre, precio, cantidad: 1});
         renderizarCarrito();
     }
 
     function renderizarCarrito() {
         const tbody = document.getElementById('tabla-carrito');
         tbody.innerHTML = '';
-        let total = 0;
-
-        carrito.forEach((item, index) => {
-            const subtotal = item.precio * item.cantidad;
-            total += subtotal;
-            tbody.innerHTML += `
-                <tr>
-                    <td>${item.nombre}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-secondary btn-cant" onclick="cambiarCant(${index}, -1)">-</button>
-                        <span class="mx-2 fw-bold">${item.cantidad}</span>
-                        <button class="btn btn-sm btn-outline-secondary btn-cant" onclick="cambiarCant(${index}, 1)">+</button>
-                    </td>
-                    <td>$${subtotal.toLocaleString()}</td>
-                    <td><button class="btn btn-sm btn-danger" onclick="eliminarItem(${index})">X</button></td>
-                </tr>
-            `;
+        let total = 0, count = 0;
+        carrito.forEach((item, idx) => {
+            let sub = item.cantidad * item.precio;
+            total += sub; count += item.cantidad;
+            tbody.innerHTML += `<tr>
+                <td>${item.nombre}</td>
+                <td class="text-center"><div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-outline-danger btn-cant" onclick="upd(${idx}, -1)">-</button>
+                    <span>${item.cantidad}</span>
+                    <button class="btn btn-outline-success btn-cant" onclick="upd(${idx}, 1)">+</button>
+                </div></td>
+                <td class="text-end fw-bold">$${sub.toLocaleString()}</td>
+                <td class="text-end"><button class="btn btn-sm btn-link text-danger" onclick="del(${idx})">X</button></td>
+            </tr>`;
         });
         document.getElementById('total-pagar').innerText = '$' + total.toLocaleString();
-        document.getElementById('modal-total').value = total; // Valor numérico para cálculos
+        document.getElementById('modal-total').value = total;
+        document.getElementById('conteo-items').innerText = count + ' ítems';
     }
 
-    function cambiarCant(index, delta) {
-        carrito[index].cantidad += delta;
-        if (carrito[index].cantidad <= 0) carrito.splice(index, 1);
-        renderizarCarrito();
-    }
-    
-    function eliminarItem(index) {
-        carrito.splice(index, 1);
-        renderizarCarrito();
-    }
-
-    function limpiarCarrito() {
-        if(confirm('¿Borrar toda la orden?')) {
-            carrito = [];
-            renderizarCarrito();
-        }
-    }
+    function upd(i, d) { carrito[i].cantidad += d; if(carrito[i].cantidad<=0) carrito.splice(i,1); renderizarCarrito(); }
+    function del(i) { carrito.splice(i,1); renderizarCarrito(); }
+    function limpiarCarrito() { if(confirm('¿Borrar?')) { carrito=[]; renderizarCarrito(); } }
 
     function abrirModalPago() {
-        if (carrito.length === 0) return alert('El carrito está vacío');
-        const modal = new bootstrap.Modal(document.getElementById('modalPago'));
-        modal.show();
-        
-        // Reset inputs
-        document.getElementById('input-recibido').value = '';
-        document.getElementById('pago-nequi').value = '';
-        document.getElementById('pago-daviplata').value = '';
-        document.getElementById('alerta-vueltas').style.display = 'none';
-        
-        // UX: Auto-focus en el campo de efectivo
-        setTimeout(() => document.getElementById('input-recibido').focus(), 500);
+        if(!carrito.length) return alert('Vacío');
+        new bootstrap.Modal(document.getElementById('modalPago')).show();
+        document.getElementById('input-recibido').value='';
+        document.getElementById('input-recibido').focus();
     }
 
     function calcularVueltas() {
-        const total = parseInt(document.getElementById('modal-total').value) || 0;
-        const efectivo = parseInt(document.getElementById('input-recibido').value) || 0;
-        const nequi = parseInt(document.getElementById('pago-nequi').value) || 0;
-        const davi = parseInt(document.getElementById('pago-daviplata').value) || 0;
-
-        const pagadoTotal = efectivo + nequi + davi;
-        const vueltas = pagadoTotal - total;
-
-        const divVueltas = document.getElementById('alerta-vueltas');
-        const txtVueltas = document.getElementById('txt-vueltas');
-
-        if (pagadoTotal >= total) {
-            divVueltas.style.display = 'block';
-            divVueltas.className = 'alert alert-success mt-3 text-center';
-            // Si las vueltas son positivas, mostrar. Si es 0 (exacto), también.
-            txtVueltas.innerText = '$' + vueltas.toLocaleString();
-        } else {
-            divVueltas.style.display = 'block';
-            divVueltas.className = 'alert alert-danger mt-3 text-center';
-            txtVueltas.innerText = 'FALTAN: $' + (total - pagadoTotal).toLocaleString();
-        }
+        let total = parseInt(document.getElementById('modal-total').value)||0;
+        let pago = (parseInt(document.getElementById('input-recibido').value)||0) + 
+                   (parseInt(document.getElementById('pago-nequi').value)||0) + 
+                   (parseInt(document.getElementById('pago-daviplata').value)||0);
+        let diff = pago - total;
+        document.getElementById('txt-vueltas').innerText = diff >= 0 ? '$'+diff.toLocaleString() : 'Faltan: $'+(total-pago).toLocaleString();
+        document.getElementById('info-vueltas').className = diff >= 0 ? 'alert alert-success text-center py-2' : 'alert alert-danger text-center py-2';
     }
 
-    function confirmarVenta() {
-        const total = parseInt(document.getElementById('modal-total').value);
-        const efectivo = parseInt(document.getElementById('input-recibido').value) || 0;
-        const nequi = parseInt(document.getElementById('pago-nequi').value) || 0;
-        const davi = parseInt(document.getElementById('pago-daviplata').value) || 0;
+    function guardarVenta(imprimir) {
+        let total = parseInt(document.getElementById('modal-total').value);
+        let pago = (parseInt(document.getElementById('input-recibido').value)||0) + 
+                   (parseInt(document.getElementById('pago-nequi').value)||0) + 
+                   (parseInt(document.getElementById('pago-daviplata').value)||0);
 
-        if ((efectivo + nequi + davi) < total) {
-            alert('❌ El pago no cubre el total de la venta.');
-            return;
+        if(pago < total) return alert('Pago insuficiente');
+
+        if(imprimir) {
+            document.getElementById('print-fecha').innerText = new Date().toLocaleString();
+            document.getElementById('print-cliente').innerText = document.getElementById('cli-nombre').value;
+            document.getElementById('print-dir').innerText = document.getElementById('cli-dir').value || 'Mostrador';
+            let tbody = document.getElementById('print-items'); tbody.innerHTML='';
+            carrito.forEach(i => tbody.innerHTML+=`<tr><td>${i.cantidad}</td><td>${i.nombre}</td><td align="right">$${(i.precio*i.cantidad).toLocaleString()}</td></tr>`);
+            document.getElementById('print-total').innerText = '$'+total.toLocaleString();
+            window.print();
         }
 
-        // Enviar al Backend
         fetch('/ventas/guardar_venta', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                carrito: carrito,
-                total: total,
-                pagos: { efectivo, nequi, daviplata: davi },
-                tipo: 'Directa' 
+                carrito, total,
+                pagos: {efectivo: parseInt(document.getElementById('input-recibido').value)||0, nequi: parseInt(document.getElementById('pago-nequi').value)||0, daviplata: parseInt(document.getElementById('pago-daviplata').value)||0},
+                tipo: 'Directa',
+                cliente: {nombre: document.getElementById('cli-nombre').value, nit: document.getElementById('cli-nit').value, telefono: document.getElementById('cli-tel').value, direccion: document.getElementById('cli-dir').value},
+                es_domicilio: document.getElementById('checkDomicilio').checked
             })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if(data.status === 'ok'){
-                alert('✅ ¡Venta Registrada Exitosamente!');
-                location.reload(); 
-            } else {
-                alert('⚠️ Error al guardar: ' + (data.mensaje || 'Error desconocido'));
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('Error de conexión con el servidor');
+        }).then(r=>r.json()).then(d=>{
+            if(d.status==='ok') location.reload();
+            else alert('Error: '+d.mensaje);
         });
     }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

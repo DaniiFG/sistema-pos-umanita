@@ -8,22 +8,23 @@
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-dark bg-primary mb-4">
-    <div class="container-fluid">
-        <a class="navbar-brand fs-3" href="#">📦 Bodega Umañita</a>
-        <div>
-            <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
-            <a href="/gastos" class="btn btn-outline-light me-2">Ir a Gastos</a>
-            <a href="{{ url_for('inventario.historial') }}" class="btn btn-warning fw-bold text-dark">📜 Ver Historial Completo</a>
-        </div>
+<nav class="navbar navbar-dark bg-primary mb-4 px-3">
+    <a class="navbar-brand fs-3" href="#">📦 Bodega Umañita</a>
+    <div>
+        <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
+        <a href="/gastos" class="btn btn-outline-light me-2">Ir a Gastos</a>
+        <a href="{{ url_for('inventario.historial') }}" class="btn btn-warning fw-bold text-dark">📜 Ver Historial</a>
     </div>
 </nav>
 
-<div class="container">
+<div class="container pb-5">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
+                <div class="alert alert-{{ category }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             {% endfor %}
         {% endif %}
     {% endwith %}
@@ -31,14 +32,13 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="text-secondary">Control de Existencias</h4>
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#formCrear">
-            <i class="fas fa-plus-circle"></i> Nuevo Producto/Activo
+            <i class="fas fa-plus-circle"></i> Nuevo Item
         </button>
     </div>
 
-    <!-- FORMULARIO CREAR -->
     <div class="collapse mb-4" id="formCrear">
         <div class="card card-body shadow border-primary">
-            <h5 class="card-title text-primary">Registrar Nuevo Item en Sistema</h5>
+            <h5 class="card-title text-primary">Registrar Nuevo Item</h5>
             <form action="{{ url_for('inventario.crear_insumo') }}" method="POST" class="row g-3">
                 <div class="col-md-4">
                     <label>Nombre</label>
@@ -47,10 +47,10 @@
                 <div class="col-md-3">
                     <label>Categoría</label>
                     <select name="categoria" class="form-select">
-                        <option value="Materia Prima">Materia Prima (Pollo/Papa)</option>
-                        <option value="Desechables">Desechables (Cajas/Bolsas)</option>
-                        <option value="Aseo">Aseo y Limpieza</option>
-                        <option value="Activos">Activos Fijos (Mesas/Equipos)</option>
+                        <option value="Materia Prima">Materia Prima</option>
+                        <option value="Desechables">Desechables</option>
+                        <option value="Aseo">Aseo</option>
+                        <option value="Activos">Activos Fijos</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -62,6 +62,7 @@
                         <option value="Galones">Galones</option>
                         <option value="Bultos">Bultos</option>
                         <option value="Cajas">Cajas</option>
+                        <option value="Litros">Litros</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -75,65 +76,69 @@
         </div>
     </div>
 
-    <!-- PESTAÑAS DE CATEGORÍAS -->
     <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-bold" id="materia-tab" data-bs-toggle="tab" data-bs-target="#materia" type="button">🍗 Materia Prima</button>
+        <li class="nav-item">
+            <button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#Materia_Prima" type="button">🍗 Materia Prima</button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="desechables-tab" data-bs-toggle="tab" data-bs-target="#desechables" type="button">🥡 Desechables</button>
+        <li class="nav-item">
+            <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#Desechables" type="button">🥡 Desechables</button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold" id="aseo-tab" data-bs-toggle="tab" data-bs-target="#aseo" type="button">🧹 Aseo</button>
+        <li class="nav-item">
+            <button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#Aseo" type="button">🧹 Aseo</button>
         </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold text-dark" id="activos-tab" data-bs-toggle="tab" data-bs-target="#activos" type="button">🏢 Activos Fijos</button>
+        <li class="nav-item">
+            <button class="nav-link fw-bold text-dark" data-bs-toggle="tab" data-bs-target="#Activos" type="button">🏢 Activos</button>
         </li>
     </ul>
 
-    <div class="tab-content" id="myTabContent">
-        <!-- MATERIA PRIMA -->
-        <div class="tab-pane fade show active" id="materia">
+    <div class="tab-content">
+        {% for cat in ['Materia Prima', 'Desechables', 'Aseo', 'Activos'] %}
+        {% set cat_id = cat.replace(" ", "_") %}
+        <div class="tab-pane fade {{ 'show active' if cat == 'Materia Prima' else '' }}" id="{{ cat_id }}">
             <div class="row g-3">
-                {% for item in insumos if item.categoria == 'Materia Prima' %}
-                    {% include 'item_card.html' %}
+                {% for item in insumos if item.categoria == cat %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100 border-{{ 'danger' if item.cantidad_actual <= item.minimo_alerta else 'secondary' }}">
+                        <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                            <h5 class="mb-0 text-dark fw-bold text-truncate">{{ item.nombre }}</h5>
+                            <div>
+                                {% if item.cantidad_actual <= item.minimo_alerta %}
+                                    <i class="fas fa-exclamation-triangle text-danger fs-4 me-2" title="Stock Bajo"></i>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-secondary border-0" 
+                                        onclick='abrirEditar({{ {"id": item.id, "nombre": item.nombre, "categoria": item.categoria, "unidad": item.unidad, "minimo_alerta": item.minimo_alerta} | tojson }})'>
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body text-center">
+                            <h2 class="display-4 fw-bold {{ 'text-danger' if item.cantidad_actual <= item.minimo_alerta else 'text-dark' }}">
+                                {{ "{0:g}".format(item.cantidad_actual) }}
+                            </h2>
+                            <p class="text-muted text-uppercase fw-bold">{{ item.unidad }}</p>
+                            <hr>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-success w-50 fw-bold" 
+                                        onclick="abrirModalMov({{ item.id }}, '{{ item.nombre }}', 'ENTRADA')">
+                                    <i class="fas fa-plus"></i> ENTRADA
+                                </button>
+                                <button class="btn btn-outline-danger w-50 fw-bold" 
+                                        onclick="abrirModalMov({{ item.id }}, '{{ item.nombre }}', 'SALIDA')">
+                                    <i class="fas fa-minus"></i> SALIDA
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {% else %}
-                    <p class="text-muted p-3">No hay materia prima registrada.</p>
+                    <p class="text-muted p-3">No hay items en esta categoría.</p>
                 {% endfor %}
             </div>
         </div>
-        
-        <!-- DESECHABLES -->
-        <div class="tab-pane fade" id="desechables">
-            <div class="row g-3">
-                {% for item in insumos if item.categoria == 'Desechables' %}
-                    {% include 'item_card.html' %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- ASEO -->
-        <div class="tab-pane fade" id="aseo">
-            <div class="row g-3">
-                {% for item in insumos if item.categoria == 'Aseo' %}
-                    {% include 'item_card.html' %}
-                {% endfor %}
-            </div>
-        </div>
-
-        <!-- ACTIVOS -->
-        <div class="tab-pane fade" id="activos">
-            <div class="alert alert-info"><i class="fas fa-info-circle"></i> Aquí registras mesas, sillas, neveras y vajilla.</div>
-            <div class="row g-3">
-                {% for item in insumos if item.categoria == 'Activos' %}
-                    {% include 'item_card.html' %}
-                {% endfor %}
-            </div>
-        </div>
+        {% endfor %}
     </div>
 </div>
 
-<!-- MODAL DE MOVIMIENTO -->
 <div class="modal fade" id="modalMovimiento" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -151,16 +156,14 @@
                         <input type="number" step="0.01" name="cantidad" class="form-control form-control-lg text-center fw-bold" required autofocus>
                     </div>
 
-                    <!-- Campo de Costo solo visible en entradas -->
                     <div class="mb-3" id="div-costo">
-                        <label class="form-label text-success">Costo Total de Compra ($)</label>
+                        <label class="form-label text-success">Costo Total ($)</label>
                         <input type="number" name="costo_unitario" class="form-control" placeholder="Opcional">
-                        <small class="text-muted">Si ingresas stock, ¿cuánto costó este lote?</small>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Observación / Lote</label>
-                        <input type="text" name="observacion" class="form-control" placeholder="Ej: Factura 123">
+                        <label class="form-label">Observación</label>
+                        <input type="text" name="observacion" class="form-control">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -171,9 +174,74 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalEditar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="form-editar" method="POST">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title">✏️ Editar Insumo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label>Nombre</label>
+                        <input type="text" name="nombre" id="edit-nombre" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label>Categoría</label>
+                            <select name="categoria" id="edit-cat" class="form-select">
+                                <option value="Materia Prima">Materia Prima</option>
+                                <option value="Desechables">Desechables</option>
+                                <option value="Aseo">Aseo</option>
+                                <option value="Activos">Activos</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label>Unidad</label>
+                            <select name="unidad" id="edit-unidad" class="form-select">
+                                <option value="Unidades">Unidades</option>
+                                <option value="Paquetes">Paquetes</option>
+                                <option value="Libras">Libras</option>
+                                <option value="Galones">Galones</option>
+                                <option value="Bultos">Bultos</option>
+                                <option value="Cajas">Cajas</option>
+                                <option value="Litros">Litros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label>Mínimo Alerta</label>
+                        <input type="number" name="minimo" id="edit-minimo" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <a href="#" id="btn-eliminar" class="btn btn-outline-danger" onclick="return confirm('¿Seguro borrar este item?')">Eliminar</a>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    function abrirModal(id, nombre, tipo) {
+    // Recuperar pestaña activa después de recargar
+    document.addEventListener("DOMContentLoaded", function() {
+        var hash = window.location.hash;
+        if (hash) {
+            // Quitamos el # para buscar
+            var id = hash.substring(1); 
+            // Buscamos el botón que activa ese tab
+            var triggerEl = document.querySelector('button[data-bs-target="#' + id + '"]');
+            if (triggerEl) {
+                var tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
+    });
+
+    function abrirModalMov(id, nombre, tipo) {
         document.getElementById('input-id').value = id;
         document.getElementById('input-tipo').value = tipo;
         
@@ -185,13 +253,13 @@
         
         if (tipo === 'ENTRADA') {
             header.className = 'modal-header text-white bg-success';
-            titulo.innerText = '📥 Ingresar a Bodega: ' + nombre;
+            titulo.innerText = '📥 Ingresar: ' + nombre;
             btn.className = 'btn btn-success btn-lg w-100';
             btn.innerText = 'Registrar Entrada';
             divCosto.style.display = 'block';
         } else {
             header.className = 'modal-header text-white bg-danger';
-            titulo.innerText = '📤 Sacar / Dar de Baja: ' + nombre;
+            titulo.innerText = '📤 Salida: ' + nombre;
             btn.className = 'btn btn-danger btn-lg w-100';
             btn.innerText = 'Registrar Salida';
             divCosto.style.display = 'none';
@@ -199,7 +267,19 @@
         
         modalEl.show();
     }
-</script>
 
+    function abrirEditar(item) {
+        document.getElementById('edit-nombre').value = item.nombre;
+        document.getElementById('edit-cat').value = item.categoria;
+        document.getElementById('edit-unidad').value = item.unidad;
+        document.getElementById('edit-minimo').value = item.minimo_alerta;
+        
+        document.getElementById('form-editar').action = '/inventario/editar/' + item.id;
+        document.getElementById('btn-eliminar').href = '/inventario/eliminar/' + item.id;
+        
+        const modal = new bootstrap.Modal(document.getElementById('modalEditar'));
+        modal.show();
+    }
+</script>
 </body>
 </html>

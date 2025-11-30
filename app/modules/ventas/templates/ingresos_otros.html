@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Otros Ingresos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-success mb-4 px-3">
+    <a class="navbar-brand fw-bold" href="#">💰 Ingresos Extra</a>
+    <a href="/ventas" class="btn btn-outline-light">Volver al POS</a>
+</nav>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow border-success mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Registrar Ingreso (NO Venta)</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Origen / Tipo</label>
+                            <select name="origen" class="form-select" required>
+                                <option value="Aporte Socio">Aporte de Socio / Base</option>
+                                <option value="Venta Reciclaje">Venta de Cartón/Aceite</option>
+                                <option value="Prestamo">Préstamo Entrante</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descripción Detallada</label>
+                            <input type="text" name="descripcion" class="form-control" placeholder="Ej: Base para iniciar caja fin de semana" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Monto ($)</label>
+                            <input type="number" name="monto" class="form-control form-control-lg border-success text-success fw-bold" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Guardar Ingreso</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="card shadow">
+                <div class="card-header">Historial Reciente</div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripción</th>
+                                <th>Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in historial %}
+                            <tr>
+                                <td>{{ i.fecha.strftime('%d/%m %H:%M') }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ i.origen }}</span><br>
+                                    {{ i.descripcion }}
+                                </td>
+                                <td class="fw-bold text-success">+ ${{ "{:,.0f}".format(i.monto) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center p-3">No hay registros.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

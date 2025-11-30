@@ -11,31 +11,32 @@
             <div class="col-md-6">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <h4>{{ accion }} Producto</h4>
+                        <h4>{{ accion }} Producto del Menú</h4>
                     </div>
                     <div class="card-body">
                         <form method="POST">
                             <div class="mb-3">
-                                <label class="form-label">Nombre del Producto</label>
+                                <label class="form-label fw-bold">Nombre del Producto</label>
                                 <input type="text" name="nombre" class="form-control" value="{{ producto.nombre if producto else '' }}" required>
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <label class="form-label">Precio de Venta</label>
-                                    <input type="number" name="precio" class="form-control" value="{{ producto.precio if producto else '' }}" required>
+                                    <label class="form-label fw-bold text-success">Precio de Venta ($)</label>
+                                    <input type="number" name="precio" class="form-control border-success" value="{{ producto.precio if producto else '' }}" required>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label text-secondary">Costo Estimado (Opcional)</label>
-                                    <input type="number" name="costo" class="form-control" value="{{ producto.costo_referencia if producto else '' }}">
-                                    <small class="text-muted">Para reporte de P&G</small>
+                                    <label class="form-label fw-bold text-danger">Costo (Materia Prima)</label>
+                                    <input type="number" name="costo" class="form-control border-danger" value="{{ producto.costo_referencia if producto else '' }}">
+                                    <small class="text-muted" style="font-size: 0.8rem;">Costo de hacer este plato (Para P&G)</small>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Categoría</label>
+                                <label class="form-label">Categoría (POS)</label>
                                 <select name="categoria" class="form-select">
-                                    <option value="Pollo" {% if producto and producto.categoria == 'Pollo' %}selected{% endif %}>Pollo</option>
+                                    <option value="Presas Individuales" {% if producto and producto.categoria == 'Presas Individuales' %}selected{% endif %}>Presas Individuales</option>
+                                    <option value="Pollo Entero/Medio" {% if producto and producto.categoria == 'Pollo Entero/Medio' %}selected{% endif %}>Pollo Entero / Medio</option>
                                     <option value="Comida Rápida" {% if producto and producto.categoria == 'Comida Rápida' %}selected{% endif %}>Comida Rápida</option>
                                     <option value="Combos" {% if producto and producto.categoria == 'Combos' %}selected{% endif %}>Combos</option>
                                     <option value="Bebidas" {% if producto and producto.categoria == 'Bebidas' %}selected{% endif %}>Bebidas</option>
@@ -54,7 +55,7 @@
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success btn-lg">Guardar</button>
+                                <button type="submit" class="btn btn-success btn-lg">Guardar Producto</button>
                                 <a href="{{ url_for('productos.index') }}" class="btn btn-secondary">Cancelar</a>
                             </div>
                         </form>

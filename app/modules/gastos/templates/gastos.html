@@ -4,22 +4,24 @@
     <meta charset="UTF-8">
     <title>Control de Gastos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-light">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-danger mb-4">
-    <div class="container-fluid">
-        <a class="navbar-brand fs-3" href="#">📉 Gastos Umañita</a>
-        <div class="d-flex">
-            <a href="/ventas" class="btn btn-outline-light me-2">Ir a Ventas</a>
-            {% if current_user.rol == 'admin' %}
-            <a href="{{ url_for('gastos.conceptos') }}" class="btn btn-warning text-dark fw-bold">⚙️ Configurar Tipos de Gasto</a>
-            {% endif %}
-        </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-danger mb-4 px-3">
+    <a class="navbar-brand fs-3 fw-bold" href="#">📉 Gastos Umañita</a>
+    <div class="ms-auto d-flex gap-2">
+        {% if current_user.rol == 'admin' %}
+            <a href="/ventas" class="btn btn-outline-light">🍗 Ir a Ventas</a>
+            <a href="/inventario" class="btn btn-outline-light">📦 Bodega</a>
+            <a href="{{ url_for('gastos.conceptos') }}" class="btn btn-warning text-dark fw-bold">⚙️ Configurar Conceptos</a>
+        {% else %}
+            <a href="/ventas" class="btn btn-outline-light">Volver al POS</a>
+        {% endif %}
     </div>
 </nav>
 
-<div class="container">
+<div class="container pb-5">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -29,69 +31,102 @@
     {% endwith %}
 
     <div class="row">
-        <!-- FORMULARIO DE REGISTRO -->
-        <div class="col-md-4">
-            <div class="card shadow border-danger">
+        <div class="col-md-5">
+            <div class="card shadow border-danger mb-4">
                 <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">Registrar Salida de Dinero</h5>
+                    <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Registrar Salida de Dinero</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('gastos.index') }}" method="POST">
+                        
                         <div class="mb-3">
-                            <label class="form-label fw-bold">¿En qué se gastó?</label>
-                            <select class="form-select form-select-lg" name="concepto_id" id="selConcepto" required onchange="verificarUnidad()">
-                                <option value="">Seleccione una opción...</option>
+                            <label class="form-label fw-bold">1. Categoría del Gasto</label>
+                            <select class="form-select bg-light" id="selCategoria" onchange="filtrarConceptos()" required>
+                                <option value="">Seleccione Categoría...</option>
+                                <option value="Materia Prima">🍗 Materia Prima (Afecta Inventario)</option>
+                                <option value="Obligaciones Laborales">👷 Obligaciones Laborales / Nómina</option>
+                                <option value="Servicios">💡 Servicios Públicos</option>
+                                <option value="Arriendo">🏠 Arriendo</option>
+                                <option value="Otros Gastos">🛠️ Otros Gastos (Mantenimiento/Varios)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">2. Concepto Específico</label>
+                            <select class="form-select form-select-lg" name="concepto_id" id="selConcepto" required disabled onchange="verificarInsumo()">
+                                <option value="">Primero elija categoría...</option>
                                 {% for c in conceptos %}
-                                    <option value="{{ c.id }}" data-cat="{{ c.categoria }}">
-                                        {{ c.nombre }} ({{ c.categoria }})
+                                    <option value="{{ c.id }}" 
+                                            data-cat="{{ c.categoria }}" 
+                                            data-es-insumo="{{ 'true' if c.es_compra_insumo else 'false' }}">
+                                        {{ c.nombre }}
                                     </option>
                                 {% endfor %}
                             </select>
                         </div>
 
-                        <!-- Campos para detalles físicos -->
-                        <div class="row g-2 mb-3 bg-light p-2 rounded border">
-                            <div class="col-6">
-                                <label class="form-label small">Cantidad (Opcional)</label>
-                                <input type="number" step="0.1" class="form-control" name="cantidad" placeholder="Ej: 2.5">
+                        <div id="div-bodega" class="p-3 mb-3 rounded border border-success bg-success bg-opacity-10" style="display:none;">
+                            <h6 class="text-success fw-bold"><i class="fas fa-box-open"></i> Entrada a Bodega Automática</h6>
+                            <label class="small text-muted">Seleccione qué producto entró:</label>
+                            <select class="form-select mb-2" name="insumo_relacionado_id">
+                                <option value="">-- No sumar al inventario --</option>
+                                {% for i in insumos %}
+                                    <option value="{{ i.id }}">{{ i.nombre }} ({{ i.unidad }})</option>
+                                {% endfor %}
+                            </select>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="small">Cantidad</label>
+                                    <input type="number" step="0.1" name="cantidad" class="form-control" placeholder="Ej: 2.5">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small">Unidad</label>
+                                    <input type="text" name="unidad" class="form-control" placeholder="Ej: Libras">
+                                </div>
                             </div>
-                            <div class="col-6">
-                                <label class="form-label small">Unidad</label>
-                                <select class="form-select" name="unidad">
-                                    <option value="">-</option>
-                                    <option value="Bultos">Bultos</option>
-                                    <option value="Libras">Libras</option>
-                                    <option value="Kilos">Kilos</option>
-                                    <option value="Cajas">Cajas</option>
-                                    <option value="Paquetes">Paquetes</option>
-                                    <option value="Galones">Galones</option>
-                                    <option value="Unidades">Unidades</option>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Proveedor</label>
+                                <select class="form-select" name="proveedor_id">
+                                    <option value="">(Opcional)</option>
+                                    {% for p in proveedores %}
+                                        <option value="{{ p.id }}">{{ p.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Método de Pago</label>
+                                <select class="form-select" name="metodo_pago" required>
+                                    <option value="Efectivo Caja">Efectivo de Caja</option>
+                                    <option value="Nequi">Nequi</option>
+                                    <option value="Daviplata">Daviplata</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Valor Pagado ($)</label>
-                            <input type="number" class="form-control form-control-lg border-danger" name="monto" placeholder="0" required>
+                            <input type="number" class="form-control form-control-lg border-danger text-danger fw-bold" name="monto" placeholder="0" required>
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Nota Adicional (Opcional)</label>
-                            <input type="text" class="form-control" name="observacion" placeholder="Ej: Marca Premier, Juan el proveedor">
+                            <label class="form-label">Nota / Observación</label>
+                            <input type="text" class="form-control" name="observacion" placeholder="Ej: Factura #1234">
                         </div>
 
-                        <button type="submit" class="btn btn-danger w-100 btn-lg">GUARDAR GASTO</button>
+                        <button type="submit" class="btn btn-danger w-100 btn-lg">REGISTRAR GASTO</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- HISTORIAL -->
-        <div class="col-md-8">
+        <div class="col-md-7">
             <div class="card shadow">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Últimos Movimientos</h5>
-                    <span class="badge bg-secondary">Mostrando últimos 50</span>
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Últimos Egresos</h5>
+                    <span class="badge bg-secondary">Hoy</span>
                 </div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover mb-0 align-middle">
@@ -99,40 +134,35 @@
                             <tr>
                                 <th>Fecha</th>
                                 <th>Concepto</th>
-                                <th>Detalle</th>
+                                <th>Prov/Pago</th>
                                 <th>Monto</th>
-                                {% if current_user.rol == 'admin' %}<th>Acción</th>{% endif %}
+                                {% if current_user.rol == 'admin' %}<th></th>{% endif %}
                             </tr>
                         </thead>
                         <tbody>
                             {% for gasto in gastos %}
                             <tr>
-                                <td style="font-size: 0.9rem;">
+                                <td class="small">
                                     {{ gasto.fecha.strftime('%d/%m') }}<br>
-                                    <small class="text-muted">{{ gasto.fecha.strftime('%H:%M') }}</small>
+                                    <span class="text-muted">{{ gasto.fecha.strftime('%H:%M') }}</span>
                                 </td>
                                 <td>
+                                    <span class="badge bg-light text-dark border mb-1">{{ gasto.categoria }}</span><br>
                                     <span class="fw-bold">{{ gasto.descripcion }}</span>
-                                    {% if gasto.observacion %}
-                                        <br><small class="text-muted fst-italic">{{ gasto.observacion }}</small>
-                                    {% endif %}
                                 </td>
-                                <td>
-                                    {% if gasto.cantidad %}
-                                        <span class="badge bg-info text-dark">{{ gasto.cantidad }} {{ gasto.unidad }}</span>
-                                    {% else %}
-                                        -
-                                    {% endif %}
+                                <td class="small">
+                                    {% if gasto.proveedor %}{{ gasto.proveedor.nombre }}{% else %}-{% endif %}
+                                    <br><span class="text-muted">{{ gasto.metodo_pago }}</span>
                                 </td>
-                                <td class="fw-bold text-danger fs-5">${{ "{:,.0f}".format(gasto.monto) }}</td>
+                                <td class="fw-bold text-danger">${{ "{:,.0f}".format(gasto.monto) }}</td>
                                 {% if current_user.rol == 'admin' %}
                                 <td>
-                                    <a href="{{ url_for('gastos.editar', id=gasto.id) }}" class="btn btn-sm btn-outline-primary">✏️</a>
+                                    <a href="{{ url_for('gastos.eliminar', id=gasto.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')"><i class="fas fa-trash"></i></a>
                                 </td>
                                 {% endif %}
                             </tr>
                             {% else %}
-                            <tr><td colspan="5" class="text-center p-4">Sin registros.</td></tr>
+                            <tr><td colspan="5" class="text-center p-4">Sin registros recientes.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -141,5 +171,43 @@
         </div>
     </div>
 </div>
+
+<script>
+    function filtrarConceptos() {
+        const cat = document.getElementById('selCategoria').value;
+        const select = document.getElementById('selConcepto');
+        const opciones = select.querySelectorAll('option');
+        
+        select.disabled = false;
+        select.value = "";
+        
+        let hayOpciones = false;
+        opciones.forEach(opt => {
+            if (opt.value === "") return;
+            if (opt.dataset.cat === cat) {
+                opt.style.display = 'block';
+                hayOpciones = true;
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+        
+        verificarInsumo();
+    }
+
+    function verificarInsumo() {
+        const select = document.getElementById('selConcepto');
+        const selectedOpt = select.options[select.selectedIndex];
+        const divBodega = document.getElementById('div-bodega');
+        
+        if (selectedOpt && selectedOpt.dataset.esInsumo === 'true') {
+            divBodega.style.display = 'block';
+        } else {
+            divBodega.style.display = 'none';
+        }
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

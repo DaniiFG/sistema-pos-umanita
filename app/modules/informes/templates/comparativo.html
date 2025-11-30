@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Comparador Histórico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light p-4">
+
+<div class="container" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>⚖️ Comparador Histórico</h3>
+        <a href="/informes" class="btn btn-secondary">Volver a Informes</a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body bg-warning bg-opacity-10">
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-6 border-end border-dark">
+                        <h6 class="fw-bold text-primary">Periodo A (Referencia)</h6>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">Inicio</span>
+                            <input type="date" name="ini_a" class="form-control" required>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Fin</span>
+                            <input type="date" name="fin_a" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-secondary">Periodo B (Comparar)</h6>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">Inicio</span>
+                            <input type="date" name="ini_b" class="form-control" required>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Fin</span>
+                            <input type="date" name="fin_b" class="form-control" required>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Tipo de Análisis</label>
+                        <select name="tipo" class="form-select" id="selTipo" onchange="toggleValor()">
+                            <option value="global">Negocio Completo</option>
+                            <option value="categoria">Por Categoría</option>
+                            <option value="producto">Por Producto (Solo Ventas)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4" id="divValor" style="display:none;">
+                        <label class="form-label fw-bold">Seleccionar</label>
+                        <select name="valor" class="form-select">
+                            <optgroup label="Categorías">
+                                {% for c in cats %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+                            </optgroup>
+                            <optgroup label="Productos">
+                                {% for p in prods %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">COMPARAR AHORA</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if datos %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-primary h-100">
+                <div class="card-header bg-primary text-white text-center">PERIODO A</div>
+                <div class="card-body text-center">
+                    <h5>Ventas: ${{ "{:,.0f}".format(datos.rango_a.ventas) }}</h5>
+                    <h6 class="text-danger">Gastos: ${{ "{:,.0f}".format(datos.rango_a.gastos) }}</h6>
+                    <hr>
+                    <h3 class="text-success fw-bold">${{ "{:,.0f}".format(datos.rango_a.utilidad) }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-secondary h-100">
+                <div class="card-header bg-secondary text-white text-center">PERIODO B</div>
+                <div class="card-body text-center">
+                    <h5>Ventas: ${{ "{:,.0f}".format(datos.rango_b.ventas) }}</h5>
+                    <h6 class="text-danger">Gastos: ${{ "{:,.0f}".format(datos.rango_b.gastos) }}</h6>
+                    <hr>
+                    <h3 class="text-success fw-bold">${{ "{:,.0f}".format(datos.rango_b.utilidad) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert {{ 'alert-success' if datos.diff_ventas >= 0 else 'alert-danger' }} mt-4 text-center">
+        <h4>Diferencia en Ventas (A - B): 
+            <strong>${{ "{:,.0f}".format(datos.diff_ventas) }}</strong>
+        </h4>
+        <small>Si es positivo, el Periodo A vendió más que el B.</small>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function toggleValor() {
+        const tipo = document.getElementById('selTipo').value;
+        const div = document.getElementById('divValor');
+        if (tipo === 'global') div.style.display = 'none';
+        else div.style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
