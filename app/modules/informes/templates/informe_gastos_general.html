@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte General de Gastos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body { font-size: 10pt; }
+            .no-print { display: none !important; }
+            .container { max-width: none !important; }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container" style="max-width: 600px;">
+        <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+            <h2>Informe General de Gastos</h2>
+            <button class="btn btn-danger" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+        
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-danger">LAS PRESAS DE UMAÑITA - REPORTE GENERAL DE GASTOS</h3>
+            <p><strong>Período:</strong> {{ f_ini_dt.strftime('%d/%m/%Y') }} a {{ f_fin_dt.strftime('%d/%m/%Y') }}</p>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Categoría</th>
+                            <th class="text-end">Total Gasto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in tabla_datos %}
+                        <tr>
+                            <td>{{ item.categoria }}</td>
+                            <td class="text-end fw-bold text-danger">${{ "{:,.0f}".format(item.total) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-danger">
+                        <tr>
+                            <td class="fw-bold">TOTAL GENERAL</td>
+                            <td class="text-end fw-bold">${{ "{:,.0f}".format(total_gastos) }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                </div>
+        </div>
+        
+        <p class="text-center small mt-5 no-print">Generado el {{ datetime.now().strftime('%d/%m/%Y a las %H:%M') }}</p>
+    </div>
+</body>
+</html>

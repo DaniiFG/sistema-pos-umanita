@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
-from app.models import db, Insumo, MovimientoInventario
+from app.models import db, Insumo, MovimientoInventario, ConceptoGasto
 from app.decorators import admin_required
 from sqlalchemy import desc
 
@@ -20,13 +20,35 @@ def index():
 @admin_required
 def crear_insumo():
     categoria = request.form.get('categoria')
+    nombre_insumo = request.form.get('nombre')
+    
     nuevo = Insumo(
-        nombre=request.form.get('nombre'),
+        nombre=nombre_insumo,
         categoria=categoria,
         unidad=request.form.get('unidad'),
         minimo_alerta=float(request.form.get('minimo'))
     )
     db.session.add(nuevo)
+
+    # NUEVA LÓGICA: CREAR CONCEPTO DE GASTO ASOCIADO PARA FACILITAR EL REGISTRO DE COMPRAS
+    if categoria in ['Materia Prima', 'Desechables', 'Aseo', 'Activos']:
+        nombre_concepto = f"Compra de {nombre_insumo}"
+        
+        # Verificar si ya existe un concepto con ese nombre para evitar duplicados
+        concepto_existente = ConceptoGasto.query.filter_by(nombre=nombre_concepto).first()
+        
+        if not concepto_existente:
+            # Los activos no afectan el inventario de insumos automáticamente con el gasto normal
+            es_compra_insumo = True if categoria in ['Materia Prima', 'Desechables', 'Aseo'] else False
+            
+            nuevo_concepto = ConceptoGasto(
+                nombre=nombre_concepto,
+                categoria=categoria,
+                es_compra_insumo=es_compra_insumo
+            )
+            db.session.add(nuevo_concepto)
+            flash(f'Concepto de Gasto "{nombre_concepto}" creado automáticamente.', 'info')
+
     db.session.commit()
     flash(f'Producto "{nuevo.nombre}" creado.', 'success')
     # Redirección corregida: Reemplaza espacios por guiones bajos para el ID del HTML
@@ -58,6 +80,12 @@ def eliminar_insumo(id):
         flash('No se puede eliminar: El insumo tiene historial de movimientos. Edítalo o desactívalo.', 'danger')
     else:
         cat_original = insumo.categoria
+        # Opcional: Eliminar ConceptoGasto asociado
+        nombre_concepto = f"Compra de {insumo.nombre}"
+        concepto = ConceptoGasto.query.filter_by(nombre=nombre_concepto).first()
+        if concepto:
+            db.session.delete(concepto)
+            
         db.session.delete(insumo)
         db.session.commit()
         flash('Insumo eliminado.', 'warning')

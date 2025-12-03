@@ -30,7 +30,8 @@ def guardar_venta():
         cliente_nombre=cliente.get('nombre', 'Consumidor Final'),
         cliente_nit=cliente.get('nit', '222222222222'),
         cliente_direccion=cliente.get('direccion', ''),
-        cliente_telefono=cliente.get('telefono', '')
+        cliente_telefono=cliente.get('telefono', ''),
+        cliente_email=cliente.get('email', '') # NUEVO
     )
     db.session.add(nueva_venta)
     db.session.flush()
@@ -64,6 +65,7 @@ def ingresos_otros():
             descripcion=request.form.get('descripcion'),
             monto=int(request.form.get('monto')),
             origen=request.form.get('origen'),
+            metodo_pago=request.form.get('metodo_pago'), # NUEVO
             usuario_id=current_user.id
         )
         db.session.add(nuevo_ingreso)

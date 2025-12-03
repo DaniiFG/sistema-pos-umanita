@@ -10,6 +10,17 @@
         body { background-color: #f4f6f9; }
         .amount { font-family: 'Consolas', monospace; font-weight: bold; }
         .filtro-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .chart-container { position: relative; height: 350px; width: 100%; }
+        /* Estilo para la lista bonita de productos */
+        .product-list-box {
+            max-height: 120px; 
+            overflow-y: auto; 
+            background: #fff; 
+            border: 1px solid #ced4da; 
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .form-check-sm { min-height: 1.2rem; margin-bottom: 0.2rem; }
     </style>
 </head>
 <body>
@@ -33,15 +44,15 @@
             <div class="row g-2 align-items-end mb-2">
                 <div class="col-md-3">
                     <label class="small fw-bold">Desde</label>
-                    <input type="date" name="fecha_inicio" class="form-control form-control-sm" value="{{ f_inicio }}">
+                    <input type="date" name="fecha_inicio" id="input-fecha-inicio" class="form-control form-control-sm" value="{{ f_inicio }}">
                 </div>
                 <div class="col-md-3">
                     <label class="small fw-bold">Hasta</label>
-                    <input type="date" name="fecha_fin" class="form-control form-control-sm" value="{{ f_fin }}">
+                    <input type="date" name="fecha_fin" id="input-fecha-fin" class="form-control form-control-sm" value="{{ f_fin }}">
                 </div>
                 <div class="col-md-2">
                     <label class="small fw-bold">Método Pago</label>
-                    <select name="filtro_metodo" class="form-select form-select-sm">
+                    <select name="filtro_metodo" id="input-metodo-pago" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         <option value="Efectivo" {% if filtro_metodo=='Efectivo' %}selected{% endif %}>Efectivo</option>
                         <option value="Nequi" {% if filtro_metodo=='Nequi' %}selected{% endif %}>Nequi</option>
@@ -57,35 +68,47 @@
             <div class="row g-2">
                 <div class="col-md-2">
                     <label class="small text-muted">Cat. Producto</label>
-                    <select name="filtro_categoria_prod" class="form-select form-select-sm">
+                    <select name="filtro_categoria_prod" id="input-cat-prod" class="form-select form-select-sm">
                         <option value="">Todas</option>
                         {% for c in cats_prod %}<option value="{{ c }}" {% if filtro_cat_prod==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
                     </select>
                 </div>
+                
                 <div class="col-md-3">
-                    <label class="small text-muted">Producto Específico</label>
-                    <select name="filtro_producto_especifico" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                        {% for p in list_prod %}<option value="{{ p }}" {% if filtro_prod_esp==p %}selected{% endif %}>{{ p }}</option>{% endfor %}
-                    </select>
+                    <label class="small text-muted">Productos Específicos</label>
+                    <div class="product-list-box">
+                        {% for p in list_prod %}
+                        <div class="form-check form-check-sm">
+                            <input class="form-check-input chk-prod-filtro" type="checkbox" 
+                                   name="filtro_producto_especifico" 
+                                   value="{{ p }}" 
+                                   id="chk-prod-{{ loop.index }}" 
+                                   {% if p in filtro_prod_esp %}checked{% endif %}>
+                            <label class="form-check-label small w-100 text-truncate" for="chk-prod-{{ loop.index }}" title="{{ p }}">
+                                {{ p }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
+
                 <div class="col-md-2 border-start ps-3">
                     <label class="small text-muted">Cat. Gasto</label>
-                    <select name="filtro_categoria_gasto" class="form-select form-select-sm">
+                    <select name="filtro_categoria_gasto" id="input-cat-gasto" class="form-select form-select-sm">
                         <option value="">Todas</option>
                         {% for c in cats_gasto %}<option value="{{ c }}" {% if filtro_cat_gasto==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
                     </select>
                 </div>
                 <div class="col-md-3">
                     <label class="small text-muted">Concepto Gasto</label>
-                    <select name="filtro_concepto" class="form-select form-select-sm">
+                    <select name="filtro_concepto" id="input-concepto" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for c in list_conceptos %}<option value="{{ c }}" {% if filtro_con==c %}selected{% endif %}>{{ c }}</option>{% endfor %}
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="small text-muted">Proveedor</label>
-                    <select name="filtro_proveedor" class="form-select form-select-sm">
+                    <select name="filtro_proveedor" id="input-proveedor" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for p in list_prov %}<option value="{{ p.id }}" {% if filtro_prov==p.id|string %}selected{% endif %}>{{ p.nombre }}</option>{% endfor %}
                     </select>
@@ -104,8 +127,19 @@
     <div class="tab-content">
         <div class="tab-pane fade" id="ventas">
             <h4 class="text-primary fw-bold mb-3">Total Ventas (Filtrado): <span class="badge bg-primary">${{ "{:,.0f}".format(total_ventas) }}</span></h4>
+            
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-outline-success btn-sm" onclick="generarReporteVentas('contable')"><i class="fas fa-file-invoice"></i> Reporte Contable</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="generarReporteVentas('detallado')"><i class="fas fa-list-ul"></i> Reporte Detallado</button>
+                <button class="btn btn-outline-info btn-sm" onclick="generarReporteVentas('general')"><i class="fas fa-box"></i> Reporte General</button>
+            </div>
+            
             <div class="row">
-                <div class="col-md-7"><canvas id="chartVentas" style="max-height: 300px;"></canvas></div>
+                <div class="col-md-7">
+                    <div class="chart-container">
+                        <canvas id="chartVentas"></canvas>
+                    </div>
+                </div>
                 <div class="col-md-5">
                     <div class="card shadow-sm h-100 table-responsive" style="max-height:350px;">
                         <table class="table table-sm table-striped">
@@ -113,6 +147,8 @@
                             <tbody>
                                 {% for p in productos %}
                                 <tr><td>{{ p.nombre }}</td><td>{{ p.cant }}</td><td class="text-end fw-bold">${{ "{:,.0f}".format(p.dinero) }}</td></tr>
+                                {% else %}
+                                <tr><td colspan="3" class="text-center text-muted">No hay datos para mostrar</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -123,8 +159,19 @@
 
         <div class="tab-pane fade" id="gastos">
             <h4 class="text-danger fw-bold mb-3">Total Gastos (Filtrado): <span class="badge bg-danger">${{ "{:,.0f}".format(total_gastos) }}</span></h4>
+
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-outline-success btn-sm" onclick="generarReporteGastos('contable')"><i class="fas fa-file-invoice"></i> Reporte Contable</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="generarReporteGastos('detallado')"><i class="fas fa-list-ul"></i> Reporte Detallado</button>
+                <button class="btn btn-outline-info btn-sm" onclick="generarReporteGastos('general')"><i class="fas fa-box"></i> Reporte General</button>
+            </div>
+
             <div class="row">
-                <div class="col-md-6"><canvas id="chartGastos" style="max-height: 300px;"></canvas></div>
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="chartGastos"></canvas>
+                    </div>
+                </div>
                 <div class="col-md-6">
                     <div class="card shadow-sm h-100 table-responsive" style="max-height:350px;">
                         <table class="table table-sm table-hover">
@@ -146,30 +193,9 @@
 
         <div class="tab-pane fade" id="balance">
             <div class="row">
-                <div class="col-md-4">
-                    <div class="card border-success mb-3">
-                        <div class="card-body text-center">
-                            <h5 class="text-success">Efectivo en Mano</h5>
-                            <h2 class="amount">${{ "{:,.0f}".format(cierre_efectivo) }}</h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-primary mb-3">
-                        <div class="card-body text-center">
-                            <h5 class="text-primary">Saldo Nequi</h5>
-                            <h2 class="amount">${{ "{:,.0f}".format(cierre_nequi) }}</h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card border-danger mb-3">
-                        <div class="card-body text-center">
-                            <h5 class="text-danger">Saldo Daviplata</h5>
-                            <h2 class="amount">${{ "{:,.0f}".format(cierre_davi) }}</h2>
-                        </div>
-                    </div>
-                </div>
+                <div class="col-md-4"><div class="card border-success mb-3"><div class="card-body text-center"><h5 class="text-success">Efectivo en Mano</h5><h2 class="amount">${{ "{:,.0f}".format(cierre_efectivo) }}</h2></div></div></div>
+                <div class="col-md-4"><div class="card border-primary mb-3"><div class="card-body text-center"><h5 class="text-primary">Saldo Nequi</h5><h2 class="amount">${{ "{:,.0f}".format(cierre_nequi) }}</h2></div></div></div>
+                <div class="col-md-4"><div class="card border-danger mb-3"><div class="card-body text-center"><h5 class="text-danger">Saldo Daviplata</h5><h2 class="amount">${{ "{:,.0f}".format(cierre_davi) }}</h2></div></div></div>
             </div>
 
             <div class="accordion" id="accordionBalance">
@@ -188,7 +214,6 @@
                                         <td class="fw-bold text-success">+${{ o.monto }}</td>
                                     </tr>
                                     {% endfor %}
-
                                     {% for v in detalles_ventas %}
                                     <tr>
                                         <td>{{ v.fecha.strftime('%H:%M') }}</td>
@@ -226,6 +251,9 @@
         </div>
 
         <div class="tab-pane fade" id="pyg">
+            <div class="d-flex justify-content-end mb-3">
+                 <button class="btn btn-outline-dark btn-sm" onclick="generarReportePyg()">🖨️ Imprimir Informe</button>
+            </div>
             <div class="alert alert-info py-2"><i class="fas fa-info-circle"></i> Cálculo de rentabilidad aproximada según costos de referencia.</div>
             <table class="table table-bordered bg-white">
                 <tr><td class="fw-bold">Ingresos</td><td class="text-end">${{ "{:,.0f}".format(total_ventas) }}</td></tr>
@@ -237,6 +265,16 @@
         </div>
     </div>
 </div>
+
+<form id="formReporte" method="POST" target="_blank">
+    <input type="hidden" name="fecha_inicio" id="report-fecha-inicio">
+    <input type="hidden" name="fecha_fin" id="report-fecha-fin">
+    <input type="hidden" name="filtro_metodo" id="report-filtro-metodo">
+    <input type="hidden" name="filtro_categoria_prod" id="report-filtro-cat-prod">
+    <input type="hidden" name="filtro_categoria_gasto" id="report-filtro-cat-gasto">
+    <input type="hidden" name="filtro_concepto" id="report-filtro-concepto">
+    <input type="hidden" name="filtro_proveedor" id="report-filtro-proveedor">
+</form>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -254,15 +292,83 @@
         const box = document.getElementById('box-filtros');
         box.style.display = (box.style.display === 'none') ? 'block' : 'none';
     }
+    
+    function getFiltros() {
+        const checkboxes = document.querySelectorAll('.chk-prod-filtro:checked');
+        const selectedProducts = Array.from(checkboxes).map(chk => chk.value);
+
+        return {
+            fecha_inicio: document.getElementById('input-fecha-inicio').value,
+            fecha_fin: document.getElementById('input-fecha-fin').value,
+            filtro_metodo: document.getElementById('input-metodo-pago').value,
+            filtro_categoria_prod: document.getElementById('input-cat-prod').value,
+            filtro_producto_especifico: selectedProducts, 
+            filtro_categoria_gasto: document.getElementById('input-cat-gasto').value,
+            filtro_concepto: document.getElementById('input-concepto').value,
+            filtro_proveedor: document.getElementById('input-proveedor').value
+        };
+    }
+
+    function setupReporteForm(filtros) {
+        const form = document.getElementById('formReporte');
+        Array.from(form.querySelectorAll('input[name="filtro_producto_especifico"]')).forEach(input => input.remove());
+
+        document.getElementById('report-fecha-inicio').value = filtros.fecha_inicio;
+        document.getElementById('report-fecha-fin').value = filtros.fecha_fin;
+        document.getElementById('report-filtro-metodo').value = filtros.filtro_metodo;
+        document.getElementById('report-filtro-cat-prod').value = filtros.filtro_categoria_prod;
+        
+        filtros.filtro_producto_especifico.forEach(val => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'filtro_producto_especifico';
+            input.value = val;
+            form.appendChild(input);
+        });
+
+        document.getElementById('report-filtro-cat-gasto').value = filtros.filtro_categoria_gasto;
+        document.getElementById('report-filtro-concepto').value = filtros.filtro_concepto;
+        document.getElementById('report-filtro-proveedor').value = filtros.filtro_proveedor;
+    }
+
+    function generarReporteVentas(tipo) {
+        const filtros = getFiltros();
+        setupReporteForm(filtros);
+        const form = document.getElementById('formReporte');
+        form.action = '/informes/reporte_ventas/' + tipo;
+        form.submit();
+    }
+    
+    function generarReporteGastos(tipo) {
+        const filtros = getFiltros();
+        setupReporteForm(filtros);
+        const form = document.getElementById('formReporte');
+        form.action = '/informes/reporte_gastos/' + tipo;
+        form.submit();
+    }
+    
+    function generarReportePyg() {
+        const filtros = getFiltros();
+        setupReporteForm(filtros);
+        const form = document.getElementById('formReporte');
+        form.action = '/informes/reporte_pyg';
+        form.submit();
+    }
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false, 
+    };
 
     new Chart(document.getElementById('chartVentas'), {
         type: 'doughnut',
-        data: { labels: {{ labels_ventas | tojson }}, datasets: [{ data: {{ data_ventas | tojson }}, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6610f2'] }] }
+        data: { labels: {{ labels_ventas | tojson }}, datasets: [{ data: {{ data_ventas | tojson }}, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6610f2'] }] },
+        options: commonOptions
     });
     new Chart(document.getElementById('chartGastos'), {
         type: 'bar',
         data: { labels: {{ labels_gastos | tojson }}, datasets: [{ label:'Gastos', data: {{ data_gastos | tojson }}, backgroundColor: '#dc3545' }] },
-        options: { indexAxis: 'y' }
+        options: { indexAxis: 'y', ...commonOptions }
     });
 </script>
 </body>

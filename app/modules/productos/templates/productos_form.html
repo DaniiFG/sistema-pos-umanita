@@ -20,6 +20,12 @@
                                 <input type="text" name="nombre" class="form-control" value="{{ producto.nombre if producto else '' }}" required>
                             </div>
 
+                            <div class="mb-3">
+                                <label class="form-label">URL de la Foto (Opcional)</label>
+                                <input type="text" name="foto_url" class="form-control" value="{{ producto.foto_url if producto else '' }}" placeholder="Ej: https://miservidor.com/img/pollo.jpg">
+                                <small class="text-muted" style="font-size: 0.8rem;">Coloca aquí la URL pública de la imagen.</small>
+                            </div>
+
                             <div class="row mb-3">
                                 <div class="col-6">
                                     <label class="form-label fw-bold text-success">Precio de Venta ($)</label>
@@ -36,7 +42,9 @@
                                 <label class="form-label">Categoría (POS)</label>
                                 <select name="categoria" class="form-select">
                                     <option value="Presas Individuales" {% if producto and producto.categoria == 'Presas Individuales' %}selected{% endif %}>Presas Individuales</option>
-                                    <option value="Pollo Entero/Medio" {% if producto and producto.categoria == 'Pollo Entero/Medio' %}selected{% endif %}>Pollo Entero / Medio</option>
+                                    <option value="Pollo Entero" {% if producto and producto.categoria == 'Pollo Entero' %}selected{% endif %}>Pollo Entero</option>
+                                    <option value="Medio Pollo" {% if producto and producto.categoria == 'Medio Pollo' %}selected{% endif %}>Medio Pollo</option>
+                                    <option value="Pollo y Medio" {% if producto and producto.categoria == 'Pollo y Medio' %}selected{% endif %}>Pollo y Medio</option>
                                     <option value="Comida Rápida" {% if producto and producto.categoria == 'Comida Rápida' %}selected{% endif %}>Comida Rápida</option>
                                     <option value="Combos" {% if producto and producto.categoria == 'Combos' %}selected{% endif %}>Combos</option>
                                     <option value="Bebidas" {% if producto and producto.categoria == 'Bebidas' %}selected{% endif %}>Bebidas</option>

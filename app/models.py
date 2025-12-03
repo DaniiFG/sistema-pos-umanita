@@ -34,9 +34,10 @@ class Producto(db.Model):
     precio = db.Column(db.Integer, nullable=False)
     costo_referencia = db.Column(db.Integer, default=0)
     categoria = db.Column(db.String(50)) 
-    # Categorias sugeridas: 'Presa Individual', 'Pollo Entero/Medio', 'Comida Rapida', 'Combos', 'Bebidas', 'Adiciones'
+    # Categorias sugeridas: 'Presa Individual', 'Pollo Entero', 'Medio Pollo', 'Pollo y Medio', 'Comida Rapida', 'Combos', 'Bebidas', 'Adiciones'
     es_combo = db.Column(db.Boolean, default=False)
     activo = db.Column(db.Boolean, default=True)
+    foto_url = db.Column(db.String(255), nullable=True) # NUEVO: Campo para la URL de la foto
 
 class Venta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -55,6 +56,7 @@ class Venta(db.Model):
     cliente_nit = db.Column(db.String(20), default="222222222222")
     cliente_direccion = db.Column(db.String(150))
     cliente_telefono = db.Column(db.String(20))
+    cliente_email = db.Column(db.String(100), nullable=True) # NUEVO: Correo del cliente
     
     # Logística
     es_domicilio = db.Column(db.Boolean, default=False)
@@ -79,6 +81,7 @@ class IngresoOcasional(db.Model):
     descripcion = db.Column(db.String(200), nullable=False)
     monto = db.Column(db.Integer, nullable=False)
     origen = db.Column(db.String(50)) # 'Aporte', 'Prestamo', 'Venta Activo', 'CuentaCobrar'
+    metodo_pago = db.Column(db.String(20), default='Efectivo Caja') # NUEVO: Método de pago
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
 
 # --- 4. MÓDULO DE EGRESOS (GASTOS) ---
@@ -86,7 +89,7 @@ class ConceptoGasto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     categoria = db.Column(db.String(50), nullable=False) 
-    # Nuevas Categorias: 'Materia Prima', 'Obligaciones Laborales', 'Servicios', 'Arriendo', 'Otros Gastos'
+    # Nuevas Categorias: 'Materia Prima', 'Obligaciones Laborales', 'Servicios', 'Arriendo', 'Otros Gastos', 'Activos'
     es_compra_insumo = db.Column(db.Boolean, default=False) # Si es True, pedirá actualizar inventario
 
 class Gasto(db.Model):

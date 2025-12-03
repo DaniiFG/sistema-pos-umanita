@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Detallado de Gastos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body { font-size: 10pt; }
+            .no-print { display: none !important; }
+            .container { max-width: none !important; }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+            <h2>Informe Detallado de Gastos</h2>
+            <button class="btn btn-danger" onclick="window.print()">🖨️ Imprimir</button>
+        </div>
+        
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-danger">LAS PRESAS DE UMAÑITA - REPORTE DE GASTOS DETALLADO</h3>
+            <p><strong>Período:</strong> {{ f_ini_dt.strftime('%d/%m/%Y') }} a {{ f_fin_dt.strftime('%d/%m/%Y') }}</p>
+        </div>
+
+        <h5 class="fw-bold text-secondary">Resumen de Totales por Categoría</h5>
+        <table class="table table-bordered table-sm w-auto mb-5 shadow-sm border-danger">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3 pe-5">Categoría</th>
+                    <th class="text-end ps-5 pe-3">Total Gastos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for categoria, info in gastos_por_categoria %}
+                <tr>
+                    <td class="ps-3">{{ categoria }}</td>
+                    <td class="text-end fw-bold ps-5 pe-3 text-danger">${{ "{:,.0f}".format(info.monto) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h5 class="fw-bold text-secondary mb-3">Detalle de Egresos</h5>
+        {% for categoria, info in gastos_por_categoria %}
+            <div class="card shadow-sm mb-4 border-danger">
+                <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between">
+                    <span>{{ categoria }}</span>
+                    <span>Subtotal: ${{ "{:,.0f}".format(info.monto) }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr class="table-light">
+                                <th style="width: 75%;">Concepto de Gasto</th>
+                                <th style="width: 25%;" class="text-end">Total Pagado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for concepto, monto in info.detalles.items() %}
+                            <tr>
+                                <td>{{ concepto }}</td>
+                                <td class="text-end fw-bold text-danger">${{ "{:,.0f}".format(monto) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="alert alert-danger text-end fw-bold fs-4 mt-5">
+            TOTAL GASTOS PERÍODO: ${{ "{:,.0f}".format(total_gastos) }}
+        </div>
+        
+        <p class="text-center small mt-5 no-print">Generado el {{ datetime.now().strftime('%d/%m/%Y a las %H:%M') }}</p>
+    </div>
+</body>
+</html>

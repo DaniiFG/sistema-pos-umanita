@@ -23,7 +23,8 @@ def crear():
             precio=int(request.form['precio']),
             categoria=request.form['categoria'],
             costo_referencia=int(request.form['costo']) if request.form['costo'] else 0,
-            es_combo='es_combo' in request.form
+            es_combo='es_combo' in request.form,
+            foto_url=request.form['foto_url']
         )
         db.session.add(nuevo)
         db.session.commit()
@@ -43,6 +44,7 @@ def editar(id):
         producto.costo_referencia = int(request.form['costo']) if request.form['costo'] else 0
         producto.es_combo = 'es_combo' in request.form
         producto.activo = 'activo' in request.form
+        producto.foto_url = request.form['foto_url']
         
         db.session.commit()
         flash('Producto actualizado', 'success')

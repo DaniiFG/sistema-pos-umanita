@@ -1,13 +1,13 @@
 from app import create_app, db
-from app.models import Usuario, Producto, Insumo, ConceptoGasto, Proveedor
+from app.models import Usuario, Producto, Insumo, ConceptoGasto, Proveedor, IngresoOcasional
 
 app = create_app()
 
 def cargar_datos():
     with app.app_context():
-        print("🗑️  Reiniciando Base de Datos con NUEVA ESTRUCTURA...")
-        db.drop_all()
-        db.create_all()
+        print("🗑️  BORRANDO DATOS ANTIGUOS Y REINICIANDO SISTEMA...")
+        db.drop_all() # Esto borra absolutamente todo
+        db.create_all() # Esto crea las tablas vacías
 
         # --- 1. USUARIOS ---
         print("👤 Creando Usuarios (Admin y Cajero)...")
@@ -18,17 +18,18 @@ def cargar_datos():
         cajero.set_password('cajero123')
         
         db.session.add_all([admin, cajero])
+        db.session.commit() # Guardamos para tener el ID del admin disponible
 
-        # --- 2. PROVEEDORES (NUEVO) ---
-        print("🚚 Creando Proveedores de ejemplo...")
+        # --- 2. PROVEEDORES ---
+        print("🚚 Creando Proveedores...")
         prov1 = Proveedor(nombre="Avicola El Galpón", nit="900123456", telefono="3101234567", direccion="Central de Abastos")
         prov2 = Proveedor(nombre="Salsamentaria La Mejor", nit="900987654", telefono="3209876543")
         prov3 = Proveedor(nombre="Desechables del Centro", nit="800111222")
         prov4 = Proveedor(nombre="Empresa de Energía", nit="899999999")
         db.session.add_all([prov1, prov2, prov3, prov4])
 
-        # --- 3. MENÚ DE PRODUCTOS (Categorías Actualizadas) ---
-        print("🍗 Cargando Menú Organizado...")
+        # --- 3. MENÚ DE PRODUCTOS ---
+        print("🍗 Cargando Menú...")
         productos = [
             # PRESAS INDIVIDUALES
             Producto(nombre="Ala Broaster (+Papa/Arepa)", precio=3500, categoria="Presas Individuales", costo_referencia=2000),
@@ -37,9 +38,9 @@ def cargar_datos():
             Producto(nombre="Pechuga Broaster (+Papa/Arepa)", precio=5500, categoria="Presas Individuales", costo_referencia=3500),
 
             # POLLO AGRUPADO
-            Producto(nombre="Medio Pollo (4 presas)", precio=18000, categoria="Pollo Entero/Medio", costo_referencia=10000),
-            Producto(nombre="Pollo Entero (8 presas)", precio=36000, categoria="Pollo Entero/Medio", costo_referencia=20000),
-            Producto(nombre="Pollo y Medio (12 presas)", precio=54000, categoria="Pollo Entero/Medio", costo_referencia=30000),
+            Producto(nombre="Medio Pollo (4 presas)", precio=18000, categoria="Medio Pollo", costo_referencia=10000),
+            Producto(nombre="Pollo Entero (8 presas)", precio=36000, categoria="Pollo Entero", costo_referencia=20000),
+            Producto(nombre="Pollo y Medio (12 presas)", precio=54000, categoria="Pollo y Medio", costo_referencia=30000),
 
             # COMIDA RÁPIDA / COMBOS
             Producto(nombre="Hamburguesa Sencilla", precio=15000, categoria="Comida Rápida", costo_referencia=8000),
@@ -57,20 +58,21 @@ def cargar_datos():
         db.session.add_all(productos)
 
         # --- 4. INSUMOS BÁSICOS ---
-        print("📦 Cargando Bodega...")
+        print("📦 Cargando Bodega Inicial...")
         insumos = [
             Insumo(nombre="Pollo Crudo", categoria="Materia Prima", unidad="Unidades"),
             Insumo(nombre="Papa Sabanera", categoria="Materia Prima", unidad="Bultos"),
             Insumo(nombre="Aceite", categoria="Materia Prima", unidad="Galones"),
             Insumo(nombre="Cajas Pollo", categoria="Desechables", unidad="Paquetes"),
             Insumo(nombre="Jabón Liquido", categoria="Aseo", unidad="Litros"),
+            Insumo(nombre="Freidora", categoria="Activos", unidad="Unidades"),
         ]
         db.session.add_all(insumos)
 
-        # --- 5. CONCEPTOS DE GASTO (Lógica Nueva) ---
-        print("💸 Configurando Nuevas Categorías de Gastos...")
+        # --- 5. CONCEPTOS DE GASTO ---
+        print("💸 Configurando Tipos de Gastos...")
         conceptos = [
-            # MATERIA PRIMA (Afectan Inventario)
+            # MATERIA PRIMA
             ConceptoGasto(nombre="Compra de Pollo Crudo", categoria="Materia Prima", es_compra_insumo=True),
             ConceptoGasto(nombre="Compra de Papa", categoria="Materia Prima", es_compra_insumo=True),
             ConceptoGasto(nombre="Compra de Aceite", categoria="Materia Prima", es_compra_insumo=True),
@@ -78,32 +80,67 @@ def cargar_datos():
             ConceptoGasto(nombre="Compra de Desechables", categoria="Materia Prima", es_compra_insumo=True),
             ConceptoGasto(nombre="Compra de Aseo", categoria="Materia Prima", es_compra_insumo=True),
 
-            # OBLIGACIONES LABORALES (Nuevo nombre para Nomina)
+            # OBLIGACIONES LABORALES
             ConceptoGasto(nombre="Pago Nómina", categoria="Obligaciones Laborales"),
             ConceptoGasto(nombre="Compra Dotación", categoria="Obligaciones Laborales"),
             ConceptoGasto(nombre="Alimentación Personal", categoria="Obligaciones Laborales"),
-            # Se eliminó 'Pago Quincena' y 'Adelanto' explícitos, se usa 'Pago Nómina' genérico o se crean más si gustas
 
-            # OPERATIVOS (Solo Servicios y Arriendo)
+            # OPERATIVOS
             ConceptoGasto(nombre="Pago de Arriendo Local", categoria="Arriendo"),
             ConceptoGasto(nombre="Pago Luz", categoria="Servicios"),
             ConceptoGasto(nombre="Pago Agua", categoria="Servicios"),
             ConceptoGasto(nombre="Pago Gas", categoria="Servicios"),
             ConceptoGasto(nombre="Pago Internet/Plan", categoria="Servicios"),
 
-            # OTROS GASTOS (Nuevo segmento)
+            # OTROS GASTOS
             ConceptoGasto(nombre="Mantenimiento y Mejoras", categoria="Otros Gastos"),
             ConceptoGasto(nombre="Publicidad y Marketing", categoria="Otros Gastos"),
             ConceptoGasto(nombre="Gastos Personales", categoria="Otros Gastos"),
             ConceptoGasto(nombre="Transporte / Taxis", categoria="Otros Gastos"),
+            
+            # ACTIVOS
+            ConceptoGasto(nombre="Compra de Equipos (Freidora, nevera)", categoria="Activos"),
+            ConceptoGasto(nombre="Mejoras Locales", categoria="Activos"),
         ]
         db.session.add_all(conceptos)
 
+        # --- 6. BASES INICIALES DE DINERO (AQUÍ ESTÁ TU SOLICITUD) ---
+        print("💰 Estableciendo Bases de Caja (Saldos Iniciales)...")
+        # Usamos 'IngresoOcasional' para que cuente en el saldo pero no como venta de producto
+        bases = [
+            # Efectivo
+            IngresoOcasional(
+                descripcion="Base Inicial de Caja (Arranque)", 
+                monto=1500000, 
+                origen="Base Inicial", 
+                metodo_pago="Efectivo Caja", 
+                usuario_id=admin.id
+            ),
+            # Nequi
+            IngresoOcasional(
+                descripcion="Saldo Inicial Nequi", 
+                monto=184300, 
+                origen="Base Inicial", 
+                metodo_pago="Nequi", 
+                usuario_id=admin.id
+            ),
+            # Daviplata
+            IngresoOcasional(
+                descripcion="Saldo Inicial Daviplata", 
+                monto=161845, 
+                origen="Base Inicial", 
+                metodo_pago="Daviplata", 
+                usuario_id=admin.id
+            ),
+        ]
+        db.session.add_all(bases)
+
         db.session.commit()
-        print("✅ ¡SISTEMA ACTUALIZADO CON ÉXITO!")
-        print("   - Categorías de Gastos Corregidas")
-        print("   - Proveedores Agregados")
-        print("   - Estructura de Clientes lista")
+        print("✅ ¡SISTEMA REINICIADO Y LISTO!")
+        print("   - Ventas y Gastos antiguos: BORRADOS")
+        print("   - Base Efectivo: $1,500,000")
+        print("   - Base Nequi: $184,300")
+        print("   - Base Daviplata: $161,845")
 
 if __name__ == "__main__":
     cargar_datos()

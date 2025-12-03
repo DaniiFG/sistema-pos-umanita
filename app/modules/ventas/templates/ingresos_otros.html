@@ -25,10 +25,19 @@
                         <div class="mb-3">
                             <label class="form-label">Origen / Tipo</label>
                             <select name="origen" class="form-select" required>
+                                <option value="Prestamo">Préstamo</option>
+                                <option value="Propina">Propina</option>
+                                <option value="Venta de Aceite">Venta de Aceite</option>
                                 <option value="Aporte Socio">Aporte de Socio / Base</option>
-                                <option value="Venta Reciclaje">Venta de Cartón/Aceite</option>
-                                <option value="Prestamo">Préstamo Entrante</option>
                                 <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Método de Pago</label>
+                            <select name="metodo_pago" class="form-select" required>
+                                <option value="Efectivo Caja">Efectivo de Caja</option>
+                                <option value="Nequi">Nequi</option>
+                                <option value="Daviplata">Daviplata</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -54,6 +63,7 @@
                             <tr>
                                 <th>Fecha</th>
                                 <th>Descripción</th>
+                                <th>Pago</th>
                                 <th>Monto</th>
                             </tr>
                         </thead>
@@ -65,10 +75,11 @@
                                     <span class="badge bg-secondary">{{ i.origen }}</span><br>
                                     {{ i.descripcion }}
                                 </td>
+                                <td>{{ i.metodo_pago }}</td>
                                 <td class="fw-bold text-success">+ ${{ "{:,.0f}".format(i.monto) }}</td>
                             </tr>
                             {% else %}
-                            <tr><td colspan="3" class="text-center p-3">No hay registros.</td></tr>
+                            <tr><td colspan="4" class="text-center p-3">No hay registros.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>
