@@ -24,6 +24,7 @@
             <p><strong>Período:</strong> {{ f_ini_dt.strftime('%d/%m/%Y') }} a {{ f_fin_dt.strftime('%d/%m/%Y') }}</p>
         </div>
 
+        <!-- Tabla de Resumen de Totales por Categoría -->
         <h5 class="fw-bold text-secondary">Resumen de Totales por Categoría</h5>
         <table class="table table-bordered table-sm w-auto mb-5 shadow-sm border-danger">
             <thead class="table-light">
@@ -33,35 +34,43 @@
                 </tr>
             </thead>
             <tbody>
-                {% for categoria, info in gastos_por_categoria %}
+                {% for categoria, lista_gastos in gastos_por_categoria %}
                 <tr>
                     <td class="ps-3">{{ categoria }}</td>
-                    <td class="text-end fw-bold ps-5 pe-3 text-danger">${{ "{:,.0f}".format(info.monto) }}</td>
+                    <td class="text-end fw-bold ps-5 pe-3 text-danger">${{ "{:,.0f}".format(lista_gastos|sum(attribute='monto')) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
 
         <h5 class="fw-bold text-secondary mb-3">Detalle de Egresos</h5>
-        {% for categoria, info in gastos_por_categoria %}
+        
+        {% for categoria, lista_gastos in gastos_por_categoria %}
             <div class="card shadow-sm mb-4 border-danger">
                 <div class="card-header bg-danger text-white fw-bold d-flex justify-content-between">
                     <span>{{ categoria }}</span>
-                    <span>Subtotal: ${{ "{:,.0f}".format(info.monto) }}</span>
+                    <span>Subtotal: ${{ "{:,.0f}".format(lista_gastos|sum(attribute='monto')) }}</span>
                 </div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="table table-sm mb-0 table-striped">
                         <thead>
                             <tr class="table-light">
-                                <th style="width: 75%;">Concepto de Gasto</th>
-                                <th style="width: 25%;" class="text-end">Total Pagado</th>
+                                <th style="width: 15%;">Fecha</th>
+                                <th style="width: 30%;">Concepto</th>
+                                <th style="width: 35%;">Nota / Observación</th>
+                                <th style="width: 20%;" class="text-end">Monto</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for concepto, monto in info.detalles.items() %}
+                            {% for gasto in lista_gastos %}
                             <tr>
-                                <td>{{ concepto }}</td>
-                                <td class="text-end fw-bold text-danger">${{ "{:,.0f}".format(monto) }}</td>
+                                <td>{{ gasto.fecha.strftime('%d/%m %H:%M') }}</td>
+                                <td class="fw-bold">{{ gasto.descripcion }}</td>
+                                <td class="small text-muted">
+                                    {{ gasto.observacion or '-' }}
+                                    {% if gasto.proveedor %} <br><i class="small">(Prov: {{ gasto.proveedor.nombre }})</i>{% endif %}
+                                </td>
+                                <td class="text-end fw-bold text-danger">${{ "{:,.0f}".format(gasto.monto) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

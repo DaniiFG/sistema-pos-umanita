@@ -117,10 +117,12 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, filtro_metodo, filtro_cat_pr
     return {
         'f_ini_dt': f_ini, 'f_fin_dt': f_fin, 
         'total_ventas': total_ventas, 
-        'productos': productos_vendidos, # CORREGIDO: Se llama 'productos' para coincidir con el HTML
+        'productos': productos_vendidos,
         'cat_stats_ventas': cat_stats_ventas,
         'labels_ventas': labels_ventas, 'data_ventas': data_ventas,
-        'total_gastos': total_gastos, 'lista_gastos': lista_gastos, 'cat_stats_gastos': g_stats,
+        'total_gastos': total_gastos, 
+        'lista_gastos': lista_gastos, # Enviamos la lista cruda también
+        'cat_stats_gastos': g_stats,
         'labels_gastos': labels_gastos, 'data_gastos': data_gastos,
         'cierre_efectivo': cierre_efectivo, 'cierre_nequi': cierre_nequi, 'cierre_davi': cierre_davi,
         'detalles_ventas': detalles_ventas, 'detalles_gastos': detalles_gastos, 'detalles_otros': detalles_otros,
@@ -179,7 +181,6 @@ def reporte_ventas(tipo):
     if tipo == 'general':
         reporte_data = [{'categoria': cat, 'total': total} for cat, total in data['cat_stats_ventas'].items()]
         reporte_data.sort(key=lambda x: x['total'], reverse=True)
-        # CORRECCIÓN: 'tabla_datos' en lugar de 'data' para evitar conflicto
         return render_template('informe_ventas_general.html', 
                                tabla_datos=reporte_data, 
                                total_ventas=data['total_ventas'], 
@@ -188,7 +189,7 @@ def reporte_ventas(tipo):
 
     elif tipo == 'detallado':
         ventas_por_categoria = defaultdict(list)
-        for p in data['productos']: # Usamos la clave corregida 'productos'
+        for p in data['productos']:
             ventas_por_categoria[p['categoria']].append(p)
         sorted_categories = sorted(ventas_por_categoria.items(), key=lambda item: sum(p['dinero'] for p in item[1]), reverse=True)
 
@@ -214,17 +215,25 @@ def reporte_gastos(tipo):
     )
     
     if tipo == 'general':
+        # Para el general, seguimos usando la estadística agregada
         reporte_data = [{'categoria': cat, 'total': info['monto']} for cat, info in data['cat_stats_gastos'].items()]
         reporte_data.sort(key=lambda x: x['total'], reverse=True)
-        # CORRECCIÓN: 'tabla_datos' en lugar de 'data'
         return render_template('informe_gastos_general.html', 
                                tabla_datos=reporte_data, 
                                total_gastos=data['total_gastos'], 
-                               f_ini_dt=data['f_ini_dt'], f_fin_dt=data['f_fin_dt'], 
+                               f_ini_dt=data['f_ini_dt'], f_fin=data['f_fin_dt'], 
                                datetime=datetime)
 
     elif tipo == 'detallado':
-        sorted_categories = sorted(data['cat_stats_gastos'].items(), key=lambda item: item[1]['monto'], reverse=True)
+        # MODIFICACIÓN CLAVE: Agrupamos la lista completa de gastos (objetos) por categoría
+        # para poder acceder a .observacion y .fecha en el template
+        gastos_por_categoria = defaultdict(list)
+        for g in data['lista_gastos']:
+            gastos_por_categoria[g.categoria].append(g)
+            
+        # Ordenar categorías por monto total gastado
+        sorted_categories = sorted(gastos_por_categoria.items(), key=lambda item: sum(g.monto for g in item[1]), reverse=True)
+
         return render_template('informe_gastos_detallado.html', 
                                gastos_por_categoria=sorted_categories, 
                                total_gastos=data['total_gastos'],
