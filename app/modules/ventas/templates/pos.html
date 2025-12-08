@@ -63,7 +63,13 @@
                                 <div class="prod-img bg-light d-flex align-items-center justify-content-center text-muted small border">SIN FOTO</div>
                             {% endif %}
                             <h6 class="card-title mb-2 fw-bold text-dark">{{ p.nombre }}</h6>
-                            <div class="precio-badge">${{ "{:,.0f}".format(p.precio) }}</div>
+                            <div class="precio-badge">
+                                {% if p.precio > 0 %}
+                                    ${{ "{:,.0f}".format(p.precio) }}
+                                {% else %}
+                                    <span class="text-primary">Variable</span>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -215,10 +221,9 @@
     let carrito = [];
     let mesaActual = 'Mostrador';
     
-    // Cargar mesas ocupadas al iniciar
     document.addEventListener('DOMContentLoaded', () => {
         cargarMesasOcupadas();
-        seleccionarMesa('Mostrador'); // Iniciar
+        seleccionarMesa('Mostrador'); 
         
         document.querySelectorAll('.btn-agregar-producto').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -229,7 +234,6 @@
 
     function cargarMesasOcupadas() {
         fetch('/ventas/mesas_ocupadas').then(r=>r.json()).then(data => {
-            // Limpiar estilos
             document.querySelectorAll('.mesa-btn').forEach(btn => btn.classList.remove('btn-warning'));
             data.mesas.forEach(m => {
                 let btn = document.getElementById('btn-mesa-'+m);
@@ -247,12 +251,9 @@
         document.getElementById('mesa-actual').innerText = mesa;
         document.getElementById('titulo-orden').className = mesa === 'Mostrador' ? 'mb-0' : 'mb-0 text-warning';
         
-        // Cargar carrito de esa mesa
         fetch('/ventas/obtener_mesa/' + mesa).then(r=>r.json()).then(data => {
             carrito = data.carrito || [];
             renderizarCarrito();
-            
-            // Resaltar botón visualmente
             document.querySelectorAll('.mesa-btn').forEach(b => b.classList.remove('mesa-activa'));
             let btn = document.getElementById('btn-mesa-'+mesa);
             if(btn) btn.classList.add('mesa-activa');
@@ -260,9 +261,28 @@
     }
 
     function agregarAlCarrito(id, nombre, precio) {
-        let item = carrito.find(i => i.id === id);
-        if(item) item.cantidad++;
-        else carrito.push({id, nombre, precio, cantidad: 1});
+        // Lógica para Productos Variables / Fantasma (Precio = 0)
+        let precioFinal = precio;
+        
+        if (precio === 0) {
+            let input = prompt("Ingrese el valor para " + nombre + ":");
+            if (input === null || input.trim() === "") return;
+            precioFinal = parseInt(input);
+            if (isNaN(precioFinal) || precioFinal <= 0) {
+                alert("Valor inválido");
+                return;
+            }
+        }
+
+        // Buscar si ya existe en el carrito
+        // NOTA: Si es precio variable, solo sumamos si el precio es idéntico. Si cambia, es otro item.
+        let item = carrito.find(i => i.id === id && i.precio === precioFinal);
+        
+        if(item) {
+            item.cantidad++;
+        } else {
+            carrito.push({id, nombre, precio: precioFinal, cantidad: 1});
+        }
         renderizarCarrito();
     }
 
@@ -285,7 +305,7 @@
             </tr>`;
         });
         document.getElementById('total-pagar').innerText = '$' + total.toLocaleString();
-        document.getElementById('modal-total').value = total; // Valor base
+        document.getElementById('modal-total').value = total; 
         document.getElementById('conteo-items').innerText = count + ' ítems';
     }
 
@@ -300,7 +320,7 @@
             body: JSON.stringify({ mesa: mesaActual, carrito: carrito })
         }).then(r=>r.json()).then(d => {
             alert('Orden guardada en ' + mesaActual);
-            cargarMesasOcupadas(); // Actualizar indicadores visuales
+            cargarMesasOcupadas(); 
             if(mesaActual === 'Mostrador') { carrito=[]; renderizarCarrito(); }
         });
     }
@@ -308,7 +328,6 @@
     function abrirModalPago() {
         if(!carrito.length) return alert('Vacío');
         new bootstrap.Modal(document.getElementById('modalPago')).show();
-        // Reset inputs
         document.getElementById('input-recibido').value='';
         document.getElementById('input-descuento').value='0';
         document.getElementById('checkFantasma').checked = false;
@@ -317,7 +336,6 @@
     }
 
     function calcularVueltas() {
-        // Calcular total con descuento
         let subtotal = 0;
         carrito.forEach(i => subtotal += (i.precio * i.cantidad));
         
