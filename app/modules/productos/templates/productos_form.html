@@ -11,35 +11,39 @@
             <div class="col-md-6">
                 <div class="card shadow">
                     <div class="card-header bg-primary text-white">
-                        <h4>{{ accion }} Producto del Menú</h4>
+                        <h4>{{ accion }} Producto</h4>
                     </div>
                     <div class="card-body">
-                        <form method="POST">
+                        <form method="POST" enctype="multipart/form-data">
                             <div class="mb-3">
-                                <label class="form-label fw-bold">Nombre del Producto</label>
+                                <label class="form-label fw-bold">Nombre</label>
                                 <input type="text" name="nombre" class="form-control" value="{{ producto.nombre if producto else '' }}" required>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">URL de la Foto (Opcional)</label>
-                                <input type="text" name="foto_url" class="form-control" value="{{ producto.foto_url if producto else '' }}" placeholder="Ej: https://miservidor.com/img/pollo.jpg">
-                                <small class="text-muted" style="font-size: 0.8rem;">Coloca aquí la URL pública de la imagen.</small>
+                                <label class="form-label">Imagen (Archivo PC)</label>
+                                <input type="file" name="imagen" class="form-control" accept="image/*">
+                                {% if producto and producto.imagen_local %}
+                                    <div class="mt-2">
+                                        <small>Actual:</small>
+                                        <img src="{{ url_for('static', filename='uploads/' + producto.imagen_local) }}" width="60" style="border-radius:5px;">
+                                    </div>
+                                {% endif %}
                             </div>
 
                             <div class="row mb-3">
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-success">Precio de Venta ($)</label>
+                                    <label class="form-label fw-bold text-success">Precio ($)</label>
                                     <input type="number" name="precio" class="form-control border-success" value="{{ producto.precio if producto else '' }}" required>
                                 </div>
                                 <div class="col-6">
-                                    <label class="form-label fw-bold text-danger">Costo (Materia Prima)</label>
+                                    <label class="form-label fw-bold text-danger">Costo (P&G)</label>
                                     <input type="number" name="costo" class="form-control border-danger" value="{{ producto.costo_referencia if producto else '' }}">
-                                    <small class="text-muted" style="font-size: 0.8rem;">Costo de hacer este plato (Para P&G)</small>
                                 </div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Categoría (POS)</label>
+                                <label class="form-label">Categoría</label>
                                 <select name="categoria" class="form-select">
                                     <option value="Presas Individuales" {% if producto and producto.categoria == 'Presas Individuales' %}selected{% endif %}>Presas Individuales</option>
                                     <option value="Pollo Entero" {% if producto and producto.categoria == 'Pollo Entero' %}selected{% endif %}>Pollo Entero</option>
@@ -58,12 +62,12 @@
                             </div>
                             
                             <div class="mb-4 form-check">
-                                <input type="checkbox" class="form-check-input" name="activo" id="checkActivo" {% if producto %}{% if producto.activo %}checked{% endif %}{% else %}checked{% endif %}>
-                                <label class="form-check-label" for="checkActivo">Producto Activo (Visible en POS)</label>
+                                <input type="checkbox" class="form-check-input" name="activo" id="checkActivo" {% if not producto or producto.activo %}checked{% endif %}>
+                                <label class="form-check-label" for="checkActivo">Producto Activo</label>
                             </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success btn-lg">Guardar Producto</button>
+                                <button type="submit" class="btn btn-success btn-lg">Guardar</button>
                                 <a href="{{ url_for('productos.index') }}" class="btn btn-secondary">Cancelar</a>
                             </div>
                         </form>

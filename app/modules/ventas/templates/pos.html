@@ -10,10 +10,12 @@
         .card-producto:active { transform: scale(0.95); background-color: #e6ffec; }
         .card-producto:hover { box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15); transform: translateY(-3px); }
         .precio-badge { font-size: 1.3rem; font-weight: 800; color: #dc3545; background: #fff0f0; padding: 5px 10px; border-radius: 8px; }
-        .total-display { font-size: 3rem; font-weight: 800; color: #2c3e50; text-align: right; letter-spacing: -1px; }
+        .total-display { font-size: 2.5rem; font-weight: 800; color: #2c3e50; text-align: right; letter-spacing: -1px; }
         .btn-cant { width: 35px; height: 35px; font-weight: bold; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; }
         .cat-header { background: #2c3e50; color: white; padding: 10px 15px; border-radius: 8px; margin-top: 20px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .prod-img { width: 100%; height: 100px; object-fit: cover; border-radius: 8px; margin-bottom: 5px; }
+        .mesa-btn { width: 100%; margin-bottom: 5px; font-weight: bold; }
+        .mesa-activa { background-color: #ffc107 !important; color: black !important; border-color: #e0a800 !important; }
         
         @media print {
             body * { visibility: hidden; }
@@ -29,11 +31,10 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-danger shadow-sm px-3 flex-shrink-0">
     <a class="navbar-brand fw-bold" href="#">🍗 Umañita POS</a>
     <div class="ms-auto">
-        <a href="{{ url_for('ventas.historial') }}" class="btn btn-sm btn-outline-light me-1">📜 Historial Ventas</a>
+        <a href="{{ url_for('ventas.historial') }}" class="btn btn-sm btn-outline-light me-1">📜 Historial</a>
         {% if current_user.rol == 'admin' %}
-            <a href="/productos" class="btn btn-sm btn-outline-light me-1">🍔 Gestionar Menú</a>
-            
-            <a href="{{ url_for('ventas.ingresos_otros') }}" class="btn btn-sm btn-outline-light me-1">💰 Ingresos Extra</a>
+            <a href="/productos" class="btn btn-sm btn-outline-light me-1">🍔 Menú</a>
+            <a href="{{ url_for('ventas.ingresos_otros') }}" class="btn btn-sm btn-outline-light me-1">💰 Ingresos</a>
             <a href="/gastos" class="btn btn-sm btn-outline-light me-1">📉 Gastos</a>
             <a href="/inventario" class="btn btn-sm btn-outline-light me-1">📦 Bodega</a>
             <a href="/informes" class="btn btn-sm btn-outline-light me-1">📊 Informes</a>
@@ -45,7 +46,7 @@
 
 <div class="container-fluid flex-grow-1 p-3 overflow-hidden">
     <div class="row h-100">
-        <div class="col-md-7 h-100 overflow-auto pb-5">
+        <div class="col-md-6 h-100 overflow-auto pb-5">
             {% for categoria, items in productos|groupby('categoria') %}
             <div class="cat-header">{{ categoria }}</div>
             <div class="row g-3">
@@ -54,7 +55,9 @@
                     <div class="card card-producto h-100 shadow-sm p-2 text-center btn-agregar-producto" 
                          role="button" data-id="{{ p.id }}" data-nombre="{{ p.nombre }}" data-precio="{{ p.precio }}">
                         <div class="card-body p-1 d-flex flex-column justify-content-between">
-                            {% if p.foto_url %}
+                            {% if p.imagen_local %}
+                                <img src="{{ url_for('static', filename='uploads/' + p.imagen_local) }}" alt="{{ p.nombre }}" class="prod-img">
+                            {% elif p.foto_url %}
                                 <img src="{{ p.foto_url }}" alt="{{ p.nombre }}" class="prod-img">
                             {% else %}
                                 <div class="prod-img bg-light d-flex align-items-center justify-content-center text-muted small border">SIN FOTO</div>
@@ -69,10 +72,10 @@
             {% endfor %}
         </div>
 
-        <div class="col-md-5 h-100 d-flex flex-column">
+        <div class="col-md-4 h-100 d-flex flex-column">
             <div class="card shadow h-100 border-0">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h4 class="mb-0">📋 La Orden</h4>
+                    <h5 class="mb-0" id="titulo-orden">📋 Orden Mesa: <span id="mesa-actual">Mostrador</span></h5>
                     <span class="badge bg-warning text-dark" id="conteo-items">0 ítems</span>
                 </div>
                 <div class="card-body p-0 flex-grow-1 overflow-auto bg-white">
@@ -83,15 +86,33 @@
                 </div>
                 <div class="card-footer bg-light p-3 border-top">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fs-4 text-muted">Total a Pagar:</span>
+                        <span class="fs-5 text-muted">Total:</span>
                         <div id="total-pagar" class="total-display">$0</div>
                     </div>
-                    <div class="d-grid gap-2 d-md-flex">
-                        <button class="btn btn-danger flex-fill py-3" onclick="limpiarCarrito()">🗑️ CANCELAR</button>
-                        <button class="btn btn-success flex-fill py-3 fw-bold fs-4" onclick="abrirModalPago()">💰 COBRAR</button>
+                    
+                    <div class="d-grid gap-2">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button class="btn btn-primary w-100 py-2 fw-bold" onclick="guardarEnMesa()">📌 GUARDAR (MESA)</button>
+                            </div>
+                            <div class="col-6">
+                                <button class="btn btn-danger w-100 py-2" onclick="limpiarCarrito()">🗑️ LIMPIAR</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-success w-100 py-3 fw-bold fs-4" onclick="abrirModalPago()">💰 COBRAR AHORA</button>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="col-md-2 h-100 overflow-auto bg-white border-start p-2">
+            <h5 class="text-center mb-3">🍽️ Mesas</h5>
+            <button class="btn btn-outline-secondary mesa-btn" onclick="seleccionarMesa('Mostrador')">🚶 Mostrador</button>
+            <hr>
+            {% for i in range(1, 13) %}
+            <button class="btn btn-outline-dark mesa-btn" id="btn-mesa-{{i}}" onclick="seleccionarMesa('{{i}}')">Mesa {{ i }}</button>
+            {% endfor %}
+            <button class="btn btn-outline-dark mesa-btn mt-3" onclick="seleccionarMesa('Domicilio')">🛵 Domicilio</button>
         </div>
     </div>
 </div>
@@ -113,21 +134,38 @@
                             <div class="col-6"><label class="small">Teléfono</label><input type="text" id="cli-tel" class="form-control"></div>
                         </div>
                         <div class="mb-2"><label class="small">Dirección</label><input type="text" id="cli-dir" class="form-control"></div>
-                        <div class="mb-2"><label class="small">Email</label><input type="email" id="cli-email" class="form-control"></div>
-                        <div class="form-check mt-3 bg-warning bg-opacity-25 p-3 rounded border border-warning">
-                            <input class="form-check-input" type="checkbox" id="checkDomicilio" style="transform: scale(1.5); margin-right: 10px;">
-                            <label class="form-check-label fw-bold fs-5" for="checkDomicilio">🛵 ¿Es Domicilio?</label>
+                        
+                        <div class="bg-light p-2 rounded border mt-3">
+                            <label class="fw-bold text-danger">🎟️ Descuento ($)</label>
+                            <input type="number" id="input-descuento" class="form-control" value="0" onkeyup="calcularVueltas()">
+                        </div>
+                        
+                        <div class="form-check mt-3">
+                            <input class="form-check-input" type="checkbox" id="checkFantasma">
+                            <label class="form-check-label text-muted small" for="checkFantasma">👻 Venta Fantasma (Solo Caja)</label>
                         </div>
                     </div>
 
                     <div class="col-md-6 ps-4">
-                        <label class="fw-bold">Total a Pagar:</label>
+                        <div class="d-flex justify-content-between">
+                            <label class="fw-bold">Subtotal:</label>
+                            <span id="lbl-subtotal" class="fw-bold">$0</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-danger">
+                            <label>Descuento:</label>
+                            <span id="lbl-descuento">-$0</span>
+                        </div>
+                        <hr>
+                        <label class="fw-bold fs-4">Total a Pagar:</label>
                         <input type="text" id="modal-total" class="form-control form-control-lg fw-bold text-end bg-light mb-3" readonly style="font-size: 1.8rem;">
+                        
                         <label class="text-primary">💵 Efectivo Recibido:</label>
                         <input type="number" id="input-recibido" class="form-control form-control-lg fw-bold text-end border-primary mb-3" style="font-size: 1.5rem;" onkeyup="calcularVueltas()" placeholder="0">
+                        
                         <div class="alert alert-secondary text-center py-2" id="info-vueltas">
                             <small>Vueltas / Cambio:</small><br><span class="fs-2 fw-bold text-dark" id="txt-vueltas">$0</span>
                         </div>
+                        
                         <h6 class="border-top pt-2 mt-2">Otros Métodos</h6>
                         <div class="row g-2">
                             <div class="col-6"><input type="number" id="pago-nequi" class="form-control" placeholder="Nequi" onkeyup="calcularVueltas()"></div>
@@ -138,8 +176,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Volver</button>
-                <button type="button" class="btn btn-primary btn-lg" onclick="guardarVenta(false)">💾 SOLO GUARDAR</button>
-                <button type="button" class="btn btn-success btn-lg fw-bold" onclick="guardarVenta(true)">🖨️ IMPRIMIR Y GUARDAR</button>
+                <button type="button" class="btn btn-primary btn-lg" onclick="cobrarVenta(false)">💾 SOLO GUARDAR</button>
+                <button type="button" class="btn btn-success btn-lg fw-bold" onclick="cobrarVenta(true)">🖨️ IMPRIMIR Y COBRAR</button>
             </div>
         </div>
     </div>
@@ -155,11 +193,9 @@
     </div>
     <div style="font-size: 11px;">
         <strong>Fecha:</strong> <span id="print-fecha"></span><br>
+        <strong>Mesa:</strong> <span id="print-mesa"></span><br>
         <strong>Cliente:</strong> <span id="print-cliente"></span><br>
-        <strong>NIT/CC:</strong> <span id="print-nit"></span><br>
-        <strong>Teléfono:</strong> <span id="print-tel"></span><br>
-        <strong>Email:</strong> <span id="print-email"></span><br>
-        <strong>Dirección:</strong> <span id="print-dir"></span>
+        <strong>NIT/CC:</strong> <span id="print-nit"></span>
     </div>
     <hr style="border-top: 1px dashed black;">
     <table style="width: 100%; font-size: 11px;">
@@ -167,25 +203,61 @@
         <tbody id="print-items"></tbody>
     </table>
     <hr style="border-top: 1px dashed black;">
-    <div style="text-align: right; font-weight: bold;">TOTAL: <span id="print-total"></span></div>
+    <div style="text-align: right;">Subtotal: <span id="print-subtotal"></span></div>
+    <div style="text-align: right;">Desc: <span id="print-descuento"></span></div>
+    <div style="text-align: right; font-weight: bold; font-size:14px;">TOTAL: <span id="print-total"></span></div>
     <hr style="border-top: 1px dashed black;">
-    <div style="text-align: center; font-size: 11px;">
-        Email: laspresasumanita@gmail.com<br>
-        Número: 32192858535
-    </div>
     <div style="text-align: center; margin-top: 15px;">*** GRACIAS POR SU COMPRA ***</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     let carrito = [];
+    let mesaActual = 'Mostrador';
+    
+    // Cargar mesas ocupadas al iniciar
     document.addEventListener('DOMContentLoaded', () => {
+        cargarMesasOcupadas();
+        seleccionarMesa('Mostrador'); // Iniciar
+        
         document.querySelectorAll('.btn-agregar-producto').forEach(btn => {
             btn.addEventListener('click', function() {
                 agregarAlCarrito(parseInt(this.dataset.id), this.dataset.nombre, parseInt(this.dataset.precio));
             });
         });
     });
+
+    function cargarMesasOcupadas() {
+        fetch('/ventas/mesas_ocupadas').then(r=>r.json()).then(data => {
+            // Limpiar estilos
+            document.querySelectorAll('.mesa-btn').forEach(btn => btn.classList.remove('btn-warning'));
+            data.mesas.forEach(m => {
+                let btn = document.getElementById('btn-mesa-'+m);
+                if(btn) {
+                    btn.classList.remove('btn-outline-dark');
+                    btn.classList.add('btn-warning');
+                    btn.innerText = 'Mesa ' + m + ' (Ocupada)';
+                }
+            });
+        });
+    }
+
+    function seleccionarMesa(mesa) {
+        mesaActual = mesa;
+        document.getElementById('mesa-actual').innerText = mesa;
+        document.getElementById('titulo-orden').className = mesa === 'Mostrador' ? 'mb-0' : 'mb-0 text-warning';
+        
+        // Cargar carrito de esa mesa
+        fetch('/ventas/obtener_mesa/' + mesa).then(r=>r.json()).then(data => {
+            carrito = data.carrito || [];
+            renderizarCarrito();
+            
+            // Resaltar botón visualmente
+            document.querySelectorAll('.mesa-btn').forEach(b => b.classList.remove('mesa-activa'));
+            let btn = document.getElementById('btn-mesa-'+mesa);
+            if(btn) btn.classList.add('mesa-activa');
+        });
+    }
 
     function agregarAlCarrito(id, nombre, precio) {
         let item = carrito.find(i => i.id === id);
@@ -213,33 +285,62 @@
             </tr>`;
         });
         document.getElementById('total-pagar').innerText = '$' + total.toLocaleString();
-        document.getElementById('modal-total').value = total;
+        document.getElementById('modal-total').value = total; // Valor base
         document.getElementById('conteo-items').innerText = count + ' ítems';
     }
 
     function upd(i, d) { carrito[i].cantidad += d; if(carrito[i].cantidad<=0) carrito.splice(i,1); renderizarCarrito(); }
     function del(i) { carrito.splice(i,1); renderizarCarrito(); }
-    function limpiarCarrito() { if(confirm('¿Borrar?')) { carrito=[]; renderizarCarrito(); } }
+    function limpiarCarrito() { if(confirm('¿Limpiar orden actual?')) { carrito=[]; renderizarCarrito(); } }
+
+    function guardarEnMesa() {
+        if(!carrito.length) return alert('Orden vacía');
+        fetch('/ventas/guardar_mesa', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ mesa: mesaActual, carrito: carrito })
+        }).then(r=>r.json()).then(d => {
+            alert('Orden guardada en ' + mesaActual);
+            cargarMesasOcupadas(); // Actualizar indicadores visuales
+            if(mesaActual === 'Mostrador') { carrito=[]; renderizarCarrito(); }
+        });
+    }
 
     function abrirModalPago() {
         if(!carrito.length) return alert('Vacío');
         new bootstrap.Modal(document.getElementById('modalPago')).show();
+        // Reset inputs
         document.getElementById('input-recibido').value='';
-        document.getElementById('input-recibido').focus();
+        document.getElementById('input-descuento').value='0';
+        document.getElementById('checkFantasma').checked = false;
+        calcularVueltas();
+        setTimeout(()=>document.getElementById('input-recibido').focus(), 500);
     }
 
     function calcularVueltas() {
-        let total = parseInt(document.getElementById('modal-total').value)||0;
+        // Calcular total con descuento
+        let subtotal = 0;
+        carrito.forEach(i => subtotal += (i.precio * i.cantidad));
+        
+        let descuento = parseInt(document.getElementById('input-descuento').value) || 0;
+        let totalFinal = subtotal - descuento;
+        if(totalFinal < 0) totalFinal = 0;
+
+        document.getElementById('lbl-subtotal').innerText = '$' + subtotal.toLocaleString();
+        document.getElementById('lbl-descuento').innerText = '-$' + descuento.toLocaleString();
+        document.getElementById('modal-total').value = totalFinal;
+
         let pago = (parseInt(document.getElementById('input-recibido').value)||0) + 
                    (parseInt(document.getElementById('pago-nequi').value)||0) + 
                    (parseInt(document.getElementById('pago-daviplata').value)||0);
-        let diff = pago - total;
-        document.getElementById('txt-vueltas').innerText = diff >= 0 ? '$'+diff.toLocaleString() : 'Faltan: $'+(total-pago).toLocaleString();
+                   
+        let diff = pago - totalFinal;
+        document.getElementById('txt-vueltas').innerText = diff >= 0 ? '$'+diff.toLocaleString() : 'Faltan: $'+(totalFinal-pago).toLocaleString();
         document.getElementById('info-vueltas').className = diff >= 0 ? 'alert alert-success text-center py-2' : 'alert alert-danger text-center py-2';
     }
 
-    function guardarVenta(imprimir) {
+    function cobrarVenta(imprimir) {
         let total = parseInt(document.getElementById('modal-total').value);
+        let descuento = parseInt(document.getElementById('input-descuento').value) || 0;
         let pago = (parseInt(document.getElementById('input-recibido').value)||0) + 
                    (parseInt(document.getElementById('pago-nequi').value)||0) + 
                    (parseInt(document.getElementById('pago-daviplata').value)||0);
@@ -248,35 +349,45 @@
 
         if(imprimir) {
             document.getElementById('print-fecha').innerText = new Date().toLocaleString();
+            document.getElementById('print-mesa').innerText = mesaActual;
             document.getElementById('print-cliente').innerText = document.getElementById('cli-nombre').value;
-            document.getElementById('print-nit').innerText = document.getElementById('cli-nit').value || '222222222222';
-            document.getElementById('print-tel').innerText = document.getElementById('cli-tel').value || '-';
-            document.getElementById('print-email').innerText = document.getElementById('cli-email').value || '-';
-            document.getElementById('print-dir').innerText = document.getElementById('cli-dir').value || 'Mostrador';
+            document.getElementById('print-nit').innerText = document.getElementById('cli-nit').value;
+            
             let tbody = document.getElementById('print-items'); tbody.innerHTML='';
             carrito.forEach(i => tbody.innerHTML+=`<tr><td>${i.cantidad}</td><td>${i.nombre}</td><td align="right">$${(i.precio*i.cantidad).toLocaleString()}</td></tr>`);
+            
+            document.getElementById('print-subtotal').innerText = '$' + (total + descuento).toLocaleString();
+            document.getElementById('print-descuento').innerText = '$' + descuento.toLocaleString();
             document.getElementById('print-total').innerText = '$'+total.toLocaleString();
             window.print();
         }
 
-        fetch('/ventas/guardar_venta', {
+        fetch('/ventas/cobrar', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                carrito, total,
-                pagos: {efectivo: parseInt(document.getElementById('input-recibido').value)||0, nequi: parseInt(document.getElementById('pago-nequi').value)||0, daviplata: parseInt(document.getElementById('pago-daviplata').value)||0},
-                tipo: 'Directa',
+                mesa: mesaActual,
+                carrito, total, descuento,
+                pagos: {
+                    efectivo: parseInt(document.getElementById('input-recibido').value)||0, 
+                    nequi: parseInt(document.getElementById('pago-nequi').value)||0, 
+                    daviplata: parseInt(document.getElementById('pago-daviplata').value)||0
+                },
+                cambio: pago - total,
                 cliente: {
                     nombre: document.getElementById('cli-nombre').value, 
                     nit: document.getElementById('cli-nit').value, 
                     telefono: document.getElementById('cli-tel').value, 
-                    direccion: document.getElementById('cli-dir').value,
-                    email: document.getElementById('cli-email').value
+                    direccion: document.getElementById('cli-dir').value
                 },
-                es_domicilio: document.getElementById('checkDomicilio').checked
+                es_fantasma: document.getElementById('checkFantasma').checked
             })
         }).then(r=>r.json()).then(d=>{
-            if(d.status==='ok') location.reload();
-            else alert('Error: '+d.mensaje);
+            if(d.status==='ok') {
+                alert('Venta Registrada!');
+                location.reload();
+            } else {
+                alert('Error: '+d.mensaje);
+            }
         });
     }
 </script>

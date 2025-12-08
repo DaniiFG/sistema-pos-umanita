@@ -1,3 +1,4 @@
+# app/models.py
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,7 +9,7 @@ class Usuario(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    rol = db.Column(db.String(20), nullable=False) # 'admin' o 'cajero'
+    rol = db.Column(db.String(20), nullable=False) 
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -16,7 +17,7 @@ class Usuario(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-# --- 2. TERCEROS (PROVEEDORES Y CLIENTES) ---
+# --- 2. TERCEROS ---
 class Proveedor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
@@ -24,44 +25,47 @@ class Proveedor(db.Model):
     direccion = db.Column(db.String(150))
     telefono = db.Column(db.String(20))
     activo = db.Column(db.Boolean, default=True)
-
     gastos = db.relationship('Gasto', backref='proveedor', lazy=True)
 
-# --- 3. MÓDULO DE INGRESOS (VENTAS) ---
+# --- 3. VENTAS ---
 class Producto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     precio = db.Column(db.Integer, nullable=False)
     costo_referencia = db.Column(db.Integer, default=0)
     categoria = db.Column(db.String(50)) 
-    # Categorias sugeridas: 'Presa Individual', 'Pollo Entero', 'Medio Pollo', 'Pollo y Medio', 'Comida Rapida', 'Combos', 'Bebidas', 'Adiciones'
     es_combo = db.Column(db.Boolean, default=False)
     activo = db.Column(db.Boolean, default=True)
-    foto_url = db.Column(db.String(255), nullable=True) # NUEVO: Campo para la URL de la foto
+    foto_url = db.Column(db.String(255), nullable=True) # Link externo (Legacy)
+    imagen_local = db.Column(db.String(255), nullable=True) # Archivo local (Nuevo)
 
 class Venta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime, default=datetime.now)
-    total_venta = db.Column(db.Integer, nullable=False)
     
-    # Desglose de pagos
+    # Estados: 'Abierta' (Mesa ocupada), 'Cerrada' (Pagada)
+    estado = db.Column(db.String(20), default='Cerrada') 
+    mesa = db.Column(db.String(50), nullable=True) # Identificador de mesa
+    
+    total_venta = db.Column(db.Integer, nullable=False)
+    descuento = db.Column(db.Integer, default=0) # Nuevo campo descuento
+    
     pago_efectivo = db.Column(db.Integer, default=0)
     pago_nequi = db.Column(db.Integer, default=0)
     pago_daviplata = db.Column(db.Integer, default=0)
-    pago_otros = db.Column(db.Integer, default=0) # Por si acaso
+    pago_otros = db.Column(db.Integer, default=0)
     cambio_dado = db.Column(db.Integer, default=0)
     
-    # Datos de Cliente (Para recibo)
+    es_fantasma = db.Column(db.Boolean, default=False) # No sale en informes, solo afecta caja
+    
     cliente_nombre = db.Column(db.String(100), default="Consumidor Final")
     cliente_nit = db.Column(db.String(20), default="222222222222")
     cliente_direccion = db.Column(db.String(150))
     cliente_telefono = db.Column(db.String(20))
-    cliente_email = db.Column(db.String(100), nullable=True) # NUEVO: Correo del cliente
+    cliente_email = db.Column(db.String(100), nullable=True)
     
-    # Logística
     es_domicilio = db.Column(db.Boolean, default=False)
-    
-    tipo_venta = db.Column(db.String(20), default='Directa') # 'Directa', 'Fiado', 'Ocasional'
+    tipo_venta = db.Column(db.String(20), default='Directa') 
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
     
     detalles = db.relationship('DetalleVenta', backref='venta', lazy=True)
@@ -69,64 +73,64 @@ class Venta(db.Model):
 class DetalleVenta(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     venta_id = db.Column(db.Integer, db.ForeignKey('venta.id'), nullable=False)
-    producto_nombre = db.Column(db.String(100))
+    producto_id = db.Column(db.Integer, db.ForeignKey('producto.id'), nullable=True) # Nuevo: Vinculación real
+    producto_nombre = db.Column(db.String(100)) # Backup del nombre
     cantidad = db.Column(db.Integer, nullable=False)
     precio_unitario = db.Column(db.Integer, nullable=False)
     subtotal = db.Column(db.Integer, nullable=False)
+    
+    producto = db.relationship('Producto') # Relación para acceder a categoría actual
 
 class IngresoOcasional(db.Model):
-    """Para registrar dineros que entran que NO son ventas de comida (Ej: Aportes socios, cuentas por cobrar)"""
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime, default=datetime.now)
     descripcion = db.Column(db.String(200), nullable=False)
     monto = db.Column(db.Integer, nullable=False)
-    origen = db.Column(db.String(50)) # 'Aporte', 'Prestamo', 'Venta Activo', 'CuentaCobrar'
-    metodo_pago = db.Column(db.String(20), default='Efectivo Caja') # NUEVO: Método de pago
+    origen = db.Column(db.String(50)) 
+    metodo_pago = db.Column(db.String(20), default='Efectivo Caja') 
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
 
-# --- 4. MÓDULO DE EGRESOS (GASTOS) ---
+# --- 4. GASTOS ---
 class ConceptoGasto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
     categoria = db.Column(db.String(50), nullable=False) 
-    # Nuevas Categorias: 'Materia Prima', 'Obligaciones Laborales', 'Servicios', 'Arriendo', 'Otros Gastos', 'Activos'
-    es_compra_insumo = db.Column(db.Boolean, default=False) # Si es True, pedirá actualizar inventario
+    es_compra_insumo = db.Column(db.Boolean, default=False) 
 
 class Gasto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.DateTime, default=datetime.now)
     categoria = db.Column(db.String(50), nullable=False) 
     descripcion = db.Column(db.String(200), nullable=False) 
-    monto = db.Column(db.Integer, nullable=False)
     
-    # Método de Pago del Gasto
-    metodo_pago = db.Column(db.String(20), default='Efectivo de Caja') # 'Efectivo de Caja', 'Banco', 'Nequi Empresarial'
+    subtotal_base = db.Column(db.Integer, nullable=True) # Valor antes de IVA
+    iva = db.Column(db.Integer, default=0)
+    monto = db.Column(db.Integer, nullable=False) # Total final
     
-    # Relación con Proveedor (Opcional)
+    metodo_pago = db.Column(db.String(20), default='Efectivo de Caja')
+    origen_dinero = db.Column(db.String(20), default='Caja Menor') # 'Caja Menor' o 'Caja Mayor'
+    es_fantasma = db.Column(db.Boolean, default=False) # Oculto en informes
+    
     proveedor_id = db.Column(db.Integer, db.ForeignKey('proveedor.id'), nullable=True)
-
-    # Detalles físicos (si aplica)
     cantidad = db.Column(db.Float, nullable=True)
     unidad = db.Column(db.String(20), nullable=True)
-    
     observacion = db.Column(db.String(200), nullable=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
 
-# --- 5. MÓDULO DE INVENTARIO ---
+# --- 5. INVENTARIO ---
 class Insumo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
-    categoria = db.Column(db.String(50)) # 'Materia Prima', 'Desechables', 'Aseo', 'Activos'
+    categoria = db.Column(db.String(50)) 
     cantidad_actual = db.Column(db.Float, default=0)
     unidad = db.Column(db.String(20), nullable=False) 
     minimo_alerta = db.Column(db.Float, default=5)
-    
     movimientos = db.relationship('MovimientoInventario', backref='insumo', lazy=True)
 
 class MovimientoInventario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     insumo_id = db.Column(db.Integer, db.ForeignKey('insumo.id'), nullable=False)
-    tipo = db.Column(db.String(20), nullable=False) # 'ENTRADA', 'SALIDA'
+    tipo = db.Column(db.String(20), nullable=False) 
     cantidad = db.Column(db.Float, nullable=False)
     costo_unitario = db.Column(db.Integer, nullable=True)
     fecha = db.Column(db.DateTime, default=datetime.now)

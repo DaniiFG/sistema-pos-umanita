@@ -5,19 +5,26 @@
     <title>Control de Gastos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        function toggleForms(tipo) {
+            if(tipo === 'rapido') {
+                document.getElementById('form-rapido').style.display = 'block';
+                document.getElementById('form-factura').style.display = 'none';
+            } else {
+                document.getElementById('form-rapido').style.display = 'none';
+                document.getElementById('form-factura').style.display = 'block';
+            }
+        }
+    </script>
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-danger mb-4 px-3">
     <a class="navbar-brand fs-3 fw-bold" href="#">📉 Gastos Umañita</a>
     <div class="ms-auto d-flex gap-2">
-        {% if current_user.rol == 'admin' %}
-            <a href="/ventas" class="btn btn-outline-light">🍗 Ir a Ventas</a>
-            <a href="/inventario" class="btn btn-outline-light">📦 Bodega</a>
-            <a href="{{ url_for('gastos.conceptos') }}" class="btn btn-warning text-dark fw-bold">⚙️ Configurar Conceptos</a>
-        {% else %}
-            <a href="/ventas" class="btn btn-outline-light">Volver al POS</a>
-        {% endif %}
+        <a href="{{ url_for('gastos.proveedores') }}" class="btn btn-light text-danger fw-bold">🚚 Proveedores</a>
+        <a href="{{ url_for('gastos.conceptos') }}" class="btn btn-warning text-dark fw-bold">⚙️ Conceptos</a>
+        <a href="/ventas" class="btn btn-outline-light">Volver al POS</a>
     </div>
 </nav>
 
@@ -30,145 +37,148 @@
         {% endif %}
     {% endwith %}
 
-    <div class="row">
-        <div class="col-md-5">
-            <div class="card shadow border-danger mb-4">
-                <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Registrar Salida de Dinero</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ url_for('gastos.index') }}" method="POST">
+    <div class="d-flex justify-content-center gap-3 mb-4">
+        <button class="btn btn-outline-danger active" onclick="toggleForms('rapido')">🚀 Gasto Rápido</button>
+        <button class="btn btn-outline-dark" onclick="toggleForms('factura')">🧾 Registrar Factura (Múltiple)</button>
+    </div>
+
+    <div id="form-rapido" class="card shadow border-danger mb-4">
+        <div class="card-header bg-danger text-white"><h5>Gasto Individual</h5></div>
+        <div class="card-body">
+            <form action="{{ url_for('gastos.index') }}" method="POST">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="fw-bold">Categoría</label>
+                        <select class="form-select mb-3" id="selCategoria" onchange="filtrarConceptos()" required>
+                            <option value="">Seleccione...</option>
+                            <option value="Materia Prima">Materia Prima</option>
+                            <option value="Obligaciones Laborales">Obligaciones Laborales</option>
+                            <option value="Servicios">Servicios</option>
+                            <option value="Arriendo">Arriendo</option>
+                            <option value="Otros Gastos">Otros Gastos</option>
+                            <option value="Activos">Activos</option>
+                        </select>
                         
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">1. Categoría del Gasto</label>
-                            <select class="form-select bg-light" id="selCategoria" onchange="filtrarConceptos()" required>
-                                <option value="">Seleccione Categoría...</option>
-                                <option value="Materia Prima">🍗 Materia Prima (Afecta Inventario)</option>
-                                <option value="Obligaciones Laborales">👷 Obligaciones Laborales / Nómina</option>
-                                <option value="Servicios">💡 Servicios Públicos</option>
-                                <option value="Arriendo">🏠 Arriendo</option>
-                                <option value="Otros Gastos">🛠️ Otros Gastos (Mantenimiento/Varios)</option>
-                                <option value="Activos">🏛️ Activos (Compra de Equipo/Mejoras)</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">2. Concepto Específico</label>
-                            <select class="form-select form-select-lg" name="concepto_id" id="selConcepto" required disabled onchange="verificarInsumo()">
-                                <option value="">Primero elija categoría...</option>
-                                {% for c in conceptos %}
-                                    <option value="{{ c.id }}" 
-                                            data-cat="{{ c.categoria }}" 
-                                            data-es-insumo="{{ 'true' if c.es_compra_insumo else 'false' }}">
-                                        {{ c.nombre }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div id="div-bodega" class="p-3 mb-3 rounded border border-success bg-success bg-opacity-10" style="display:none;">
-                            <h6 class="text-success fw-bold"><i class="fas fa-box-open"></i> Entrada a Bodega Automática</h6>
-                            <label class="small text-muted">Seleccione qué producto entró:</label>
-                            <select class="form-select mb-2" name="insumo_relacionado_id">
-                                <option value="">-- No sumar al inventario --</option>
-                                {% for i in insumos %}
-                                    <option value="{{ i.id }}">{{ i.nombre }} ({{ i.unidad }})</option>
-                                {% endfor %}
-                            </select>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="small">Cantidad</label>
-                                    <input type="number" step="0.1" name="cantidad" class="form-control" placeholder="Ej: 2.5">
-                                </div>
-                                <div class="col-6">
-                                    <label class="small">Unidad</label>
-                                    <input type="text" name="unidad" class="form-control" placeholder="Ej: Libras">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">Proveedor</label>
-                                <select class="form-select" name="proveedor_id">
-                                    <option value="">(Opcional)</option>
-                                    {% for p in proveedores %}
-                                        <option value="{{ p.id }}">{{ p.nombre }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">Método de Pago</label>
-                                <select class="form-select" name="metodo_pago" required>
-                                    <option value="Efectivo Caja">Efectivo de Caja</option>
-                                    <option value="Nequi">Nequi</option>
-                                    <option value="Daviplata">Daviplata</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Valor Pagado ($)</label>
-                            <input type="number" class="form-control form-control-lg border-danger text-danger fw-bold" name="monto" placeholder="0" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Nota / Observación</label>
-                            <input type="text" class="form-control" name="observacion" placeholder="Ej: Factura #1234">
-                        </div>
-
-                        <button type="submit" class="btn btn-danger w-100 btn-lg">REGISTRAR GASTO</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-7">
-            <div class="card shadow">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Últimos Egresos</h5>
-                    <span class="badge bg-secondary">Hoy</span>
-                </div>
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Concepto</th>
-                                <th>Prov/Pago</th>
-                                <th>Monto</th>
-                                {% if current_user.rol == 'admin' %}<th></th>{% endif %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for gasto in gastos %}
-                            <tr>
-                                <td class="small">
-                                    {{ gasto.fecha.strftime('%d/%m') }}<br>
-                                    <span class="text-muted">{{ gasto.fecha.strftime('%H:%M') }}</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-light text-dark border mb-1">{{ gasto.categoria }}</span><br>
-                                    <span class="fw-bold">{{ gasto.descripcion }}</span>
-                                </td>
-                                <td class="small">
-                                    {% if gasto.proveedor %}{{ gasto.proveedor.nombre }}{% else %}-{% endif %}
-                                    <br><span class="text-muted">{{ gasto.metodo_pago }}</span>
-                                </td>
-                                <td class="fw-bold text-danger">${{ "{:,.0f}".format(gasto.monto) }}</td>
-                                {% if current_user.rol == 'admin' %}
-                                <td>
-                                    <a href="{{ url_for('gastos.eliminar', id=gasto.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?')"><i class="fas fa-trash"></i></a>
-                                </td>
-                                {% endif %}
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="5" class="text-center p-4">Sin registros recientes.</td></tr>
+                        <label class="fw-bold">Concepto</label>
+                        <select class="form-select mb-3" name="concepto_id" id="selConcepto" required disabled onchange="checkNomina()">
+                            <option value="">Elija categoría...</option>
+                            {% for c in conceptos %}
+                                <option value="{{ c.id }}" data-cat="{{ c.categoria }}">{{ c.nombre }}</option>
                             {% endfor %}
-                        </tbody>
-                    </table>
+                        </select>
+
+                        <div id="div-nomina" class="mb-3 p-2 bg-info bg-opacity-10 border rounded" style="display:none;">
+                            <label class="small fw-bold">Empleado:</label>
+                            <select name="empleado_nomina" class="form-select form-select-sm">
+                                <option value="">-- Seleccionar --</option>
+                                {% for emp in empleados %}
+                                    <option value="{{ emp }}">{{ emp }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="fw-bold">Método Pago</label>
+                        <select class="form-select mb-2" name="metodo_pago" required>
+                            <option value="Efectivo Caja">Efectivo</option>
+                            <option value="Nequi">Nequi</option>
+                            <option value="Daviplata">Daviplata</option>
+                        </select>
+                        <select class="form-select mb-3" name="origen_dinero">
+                            <option value="Caja Menor">De Caja Menor (Diaria)</option>
+                            <option value="Caja Mayor">De Caja Mayor (Fuerte)</option>
+                        </select>
+
+                        <label class="fw-bold text-danger">Valor ($)</label>
+                        <input type="number" name="monto" class="form-control form-control-lg border-danger fw-bold mb-3" required>
+                    </div>
                 </div>
-            </div>
+                
+                <div class="p-2 mb-3 bg-light border rounded">
+                    <small class="fw-bold text-success">📦 ¿Afecta Inventario?</small>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" name="insumo_relacionado_id">
+                            <option value="">No</option>
+                            {% for i in insumos %}
+                                <option value="{{ i.id }}">{{ i.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" step="0.1" name="cantidad" class="form-control form-control-sm" placeholder="Cant." style="width: 80px;">
+                    </div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" name="es_fantasma">
+                    <label class="form-check-label text-muted">👻 Gasto Fantasma (Solo descuenta caja)</label>
+                </div>
+
+                <button type="submit" class="btn btn-danger w-100">REGISTRAR</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="form-factura" class="card shadow border-dark mb-4" style="display:none;">
+        <div class="card-header bg-dark text-white"><h5>🧾 Registrar Factura Completa</h5></div>
+        <div class="card-body">
+            <form action="{{ url_for('gastos.factura_masiva') }}" method="POST">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label>Proveedor</label>
+                        <select name="factura_proveedor" class="form-select">
+                            <option value="">Varios / Anónimo</option>
+                            {% for p in proveedores %}<option value="{{ p.id }}">{{ p.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Método Pago</label>
+                        <select name="factura_metodo" class="form-select">
+                            <option value="Efectivo Caja">Efectivo</option>
+                            <option value="Nequi">Nequi</option>
+                            <option value="Daviplata">Daviplata</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Origen</label>
+                        <select name="factura_origen" class="form-select">
+                            <option value="Caja Menor">Caja Menor</option>
+                            <option value="Caja Mayor">Caja Mayor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <table class="table table-sm">
+                    <thead><tr><th>Concepto</th><th>Descrip/Item</th><th>Subtotal</th><th>IVA</th><th></th></tr></thead>
+                    <tbody id="tabla-factura">
+                        </tbody>
+                </table>
+                <button type="button" class="btn btn-sm btn-secondary mb-3" onclick="agregarFilaFactura()">+ Agregar Item</button>
+                <hr>
+                <button type="submit" class="btn btn-dark w-100">GUARDAR FACTURA COMPLETA</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header">Últimos Movimientos</div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover mb-0 small">
+                <thead><tr><th>Fecha</th><th>Desc</th><th>Pago</th><th>Monto</th><th></th></tr></thead>
+                <tbody>
+                    {% for g in gastos %}
+                    <tr class="{{ 'table-secondary text-muted' if g.es_fantasma else '' }}">
+                        <td>{{ g.fecha.strftime('%d/%m %H:%M') }}</td>
+                        <td>
+                            {% if g.es_fantasma %}👻{% endif %}
+                            <strong>{{ g.descripcion }}</strong><br>
+                            <span class="text-muted">{{ g.categoria }}</span>
+                        </td>
+                        <td>{{ g.metodo_pago }} <br> ({{ g.origen_dinero }})</td>
+                        <td class="fw-bold text-danger">${{ "{:,.0f}".format(g.monto) }}</td>
+                        <td><a href="{{ url_for('gastos.eliminar', id=g.id) }}" class="text-danger">X</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -178,37 +188,44 @@
         const cat = document.getElementById('selCategoria').value;
         const select = document.getElementById('selConcepto');
         const opciones = select.querySelectorAll('option');
-        
-        select.disabled = false;
-        select.value = "";
-        
-        let hayOpciones = false;
+        select.disabled = false; select.value = "";
         opciones.forEach(opt => {
             if (opt.value === "") return;
-            if (opt.dataset.cat === cat) {
-                opt.style.display = 'block';
-                hayOpciones = true;
-            } else {
-                opt.style.display = 'none';
-            }
+            opt.style.display = (opt.dataset.cat === cat) ? 'block' : 'none';
         });
-        
-        verificarInsumo();
     }
 
-    function verificarInsumo() {
+    function checkNomina() {
         const select = document.getElementById('selConcepto');
-        const selectedOpt = select.options[select.selectedIndex];
-        const divBodega = document.getElementById('div-bodega');
-        
-        if (selectedOpt && selectedOpt.dataset.esInsumo === 'true') {
-            divBodega.style.display = 'block';
-        } else {
-            divBodega.style.display = 'none';
-        }
+        const cat = select.options[select.selectedIndex].dataset.cat;
+        document.getElementById('div-nomina').style.display = (cat === 'Obligaciones Laborales') ? 'block' : 'none';
     }
-</script>
 
+    function agregarFilaFactura() {
+        const tbody = document.getElementById('tabla-factura');
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <select name="item_concepto" class="form-select form-select-sm" required>
+                    {% for c in conceptos %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}
+                </select>
+            </td>
+            <td><input type="text" name="item_desc" class="form-control form-control-sm" placeholder="Detalle"></td>
+            <td><input type="number" name="item_subtotal" class="form-control form-control-sm" placeholder="$$" required></td>
+            <td>
+                <select name="item_iva_select" class="form-select form-select-sm">
+                    <option value="0">0%</option>
+                    <option value="5">5%</option>
+                    <option value="19">19%</option>
+                </select>
+            </td>
+            <td><button type="button" class="btn btn-link text-danger" onclick="this.closest('tr').remove()">X</button></td>
+        `;
+        tbody.appendChild(row);
+    }
+    // Iniciar con una fila
+    agregarFilaFactura();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
