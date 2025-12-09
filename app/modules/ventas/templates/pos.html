@@ -47,12 +47,48 @@
         .mesa-activa { background-color: #ffc107 !important; color: black !important; border-color: #e0a800 !important; }
         
         @media print {
-            body * { visibility: hidden; }
-            #ticket-print, #ticket-print * { visibility: visible; }
-            #ticket-print { position: absolute; left: 0; top: 0; width: 80mm; font-family: 'Courier New', monospace; font-size: 12px; color: black; background: white; display: block !important; }
-            .modal, .navbar, .container-fluid { display: none !important; }
-        }
-        #ticket-print { display: none; }
+                    @page {
+                        /* CAMBIO CLAVE: Ajustado a 72mm para coincidir con tu impresora */
+                        size: 72mm auto;   
+                        margin: 0mm;       
+                    }
+
+                    body {
+                        visibility: hidden;
+                        margin: 0;
+                        padding: 0;
+                    }
+
+                    #ticket-print, #ticket-print * {
+                        visibility: visible;
+                    }
+
+                    #ticket-print {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        /* CAMBIO: Usamos 100% pero del ancho de página definido arriba (72mm) */
+                        width: 100%;       
+                        height: auto;      
+                        
+                        font-family: 'Arial', sans-serif;
+                        font-weight: bold;
+                        font-size: 12px;
+                        color: black;
+                        background: white;
+                        display: block !important;
+                        
+                        /* CAMBIO: Margen derecho de seguridad para evitar cortes */
+                        padding-right: 2mm; 
+                        padding-bottom: 5mm; 
+                    }
+
+                    .modal, .navbar, .container-fluid { 
+                        display: none !important; 
+                    }
+                }
+                
+                #ticket-print { display: none; }
     </style>
 </head>
 <body class="d-flex flex-column">
