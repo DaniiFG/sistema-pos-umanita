@@ -10,8 +10,65 @@ ventas_bp = Blueprint('ventas', __name__, template_folder='templates')
 @ventas_bp.route('/')
 @login_required
 def pos():
-    productos = Producto.query.filter_by(activo=True).all()
-    return render_template('pos.html', productos=productos)
+    # 1. Obtener todos los productos activos
+    productos_db = Producto.query.filter_by(activo=True).all()
+    
+    # 2. Definir el orden exacto de las pestañas (en mayúsculas para comparar)
+    ORDEN_CATEGORIAS = [
+        'PRESAS INDIVIDUALES',
+        'BEBIDAS',
+        'POLLO ENTERO',
+        'MEDIO POLLO',
+        'POLLO Y MEDIO',
+        'COMIDA RÁPIDA', # Usamos la versión con tilde como estándar
+        'COMBOS',
+        'ADICIONES',
+        'OTROS'
+    ]
+    
+    # 3. Diccionario para agrupar temporalmente: { 'BEBIDAS': [p1, p2], ... }
+    # Inicializamos con las categorías del orden para asegurar su posición
+    grupos = {cat: [] for cat in ORDEN_CATEGORIAS}
+    
+    # Lista para capturar categorías que no estén en tu lista oficial
+    sin_clasificar = []
+
+    # 4. Clasificar cada producto
+    for p in productos_db:
+        if not p.categoria:
+            sin_clasificar.append(p)
+            continue
+            
+        cat_upper = p.categoria.upper().strip()
+        
+        # Normalización de tildes común
+        if cat_upper == 'COMIDA RAPIDA': 
+            cat_upper = 'COMIDA RÁPIDA'
+            
+        if cat_upper in grupos:
+            grupos[cat_upper].append(p)
+        elif cat_upper == 'OTROS': # Si viene explícitamente como OTROS en BD
+            grupos['OTROS'].append(p)
+        else:
+            sin_clasificar.append(p)
+
+    # 5. Construir la lista final ordenada para la plantilla
+    # Formato: [ ('NOMBRE CAT', [lista_prods]), ... ]
+    productos_ordenados = []
+    
+    for cat in ORDEN_CATEGORIAS:
+        lista_items = grupos[cat]
+        # Si es la categoría OTROS, le sumamos los sin clasificar
+        if cat == 'OTROS':
+            lista_items.extend(sin_clasificar)
+            
+        if lista_items: # Solo agregamos la pestaña si tiene productos
+            # Ordenar alfabéticamente los productos DENTRO de la categoría
+            lista_items.sort(key=lambda x: x.nombre)
+            productos_ordenados.append((cat, lista_items))
+
+    # Enviamos "productos_ordenados" en lugar de "productos"
+    return render_template('pos.html', productos_por_categoria=productos_ordenados)
 
 @ventas_bp.route('/guardar_mesa', methods=['POST'])
 @login_required
@@ -24,7 +81,7 @@ def guardar_mesa():
     venta_existente = Venta.query.filter_by(mesa=mesa, estado='Abierta').first()
     
     if venta_existente:
-        # Actualizar: Borrar detalles anteriores y poner los nuevos (estrategia simple)
+        # Actualizar: Borrar detalles anteriores y poner los nuevos
         DetalleVenta.query.filter_by(venta_id=venta_existente.id).delete()
         venta_existente.total_venta = sum(i['precio']*i['cantidad'] for i in carrito)
     else:
@@ -128,6 +185,49 @@ def cobrar():
 def historial():
     ventas = Venta.query.filter_by(estado='Cerrada').order_by(desc(Venta.fecha)).limit(50).all()
     return render_template('ventas_historial.html', ventas=ventas)
+
+@ventas_bp.route('/eliminar/<int:id>')
+@login_required
+@admin_required
+def eliminar(id):
+    venta = Venta.query.get_or_404(id)
+    try:
+        # Borrar detalles primero
+        DetalleVenta.query.filter_by(venta_id=venta.id).delete()
+        # Borrar venta
+        db.session.delete(venta)
+        db.session.commit()
+        flash(f'Venta #{id} eliminada correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar venta: {e}', 'danger')
+        
+    return redirect(url_for('ventas.historial'))
+
+@ventas_bp.route('/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def editar(id):
+    venta = Venta.query.get_or_404(id)
+    if request.method == 'POST':
+        venta.cliente_nombre = request.form.get('cliente_nombre')
+        venta.cliente_nit = request.form.get('cliente_nit')
+        
+        venta.pago_efectivo = int(request.form.get('pago_efectivo') or 0)
+        venta.pago_nequi = int(request.form.get('pago_nequi') or 0)
+        venta.pago_daviplata = int(request.form.get('pago_daviplata') or 0)
+        venta.cambio_dado = int(request.form.get('cambio_dado') or 0)
+        
+        # Validar consistencia básica (advertencia, no bloqueo)
+        total_pagado = venta.pago_efectivo + venta.pago_nequi + venta.pago_daviplata
+        if total_pagado < venta.total_venta:
+            flash('Advertencia: Los pagos son menores al total de la venta.', 'warning')
+        
+        db.session.commit()
+        flash('Venta actualizada correctamente.', 'success')
+        return redirect(url_for('ventas.historial'))
+            
+    return render_template('venta_editar.html', venta=venta)
 
 @ventas_bp.route('/ingresos_otros', methods=['GET', 'POST'])
 @login_required

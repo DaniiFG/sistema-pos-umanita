@@ -12,7 +12,6 @@ EMPLEADOS = ["Daniel García", "Daniela Garcia", "Camilo Melendrez", "Gladys Bra
 def index():
     conceptos = ConceptoGasto.query.order_by(ConceptoGasto.categoria, ConceptoGasto.nombre).all()
     proveedores = Proveedor.query.filter_by(activo=True).all()
-    # AHORA: Todos los insumos se pueden seleccionar para alimentar inventario
     insumos = Insumo.query.order_by(Insumo.nombre).all()
 
     if request.method == 'POST':
@@ -23,19 +22,24 @@ def index():
         monto = int(request.form.get('monto'))
         descripcion_final = concepto.nombre
         
-        # Si es nómina, agregar empleado
+        # 1. Si es nómina, agregar empleado al nombre del concepto
         if concepto.categoria == 'Obligaciones Laborales' and request.form.get('empleado_nomina'):
             descripcion_final += f" ({request.form.get('empleado_nomina')})"
+        
+        # 2. Capturar el detalle adicional para la columna OBSERVACIÓN (CAMBIO REALIZADO)
+        # Esto asegura que salga en la columna "Detalle/Observación" de los informes
+        detalle_extra = request.form.get('detalle_adicional')
+        observacion_gasto = detalle_extra.strip() if (detalle_extra and detalle_extra.strip()) else request.form.get('observacion')
             
         nuevo_gasto = Gasto(
             categoria=concepto.categoria,
-            descripcion=descripcion_final,
+            descripcion=descripcion_final, # Mantiene solo el nombre del concepto
             monto=monto,
             metodo_pago=request.form.get('metodo_pago'),
             origen_dinero=request.form.get('origen_dinero'),
             es_fantasma='es_fantasma' in request.form,
             proveedor_id=request.form.get('proveedor_id') or None,
-            observacion=request.form.get('observacion'),
+            observacion=observacion_gasto, # Aquí guardamos el detalle específico
             usuario_id=current_user.id
         )
         db.session.add(nuevo_gasto)
@@ -47,22 +51,28 @@ def index():
             insumo = Insumo.query.get(insumo_id)
             if insumo:
                 insumo.cantidad_actual += cantidad
+                
+                # Construimos una observación útil para el Kardex
+                obs_kardex = f"Compra Gasto: {descripcion_final}"
+                if observacion_gasto:
+                    obs_kardex += f" ({observacion_gasto})"
+
                 mov = MovimientoInventario(
                     insumo_id=insumo.id,
                     tipo='ENTRADA',
                     cantidad=cantidad,
                     costo_unitario=monto,
-                    observacion=f"Compra Gasto: {descripcion_final}",
+                    observacion=obs_kardex,
                     usuario_id=current_user.id
                 )
                 db.session.add(mov)
                 flash(f'Inventario actualizado: {insumo.nombre} (+{cantidad})', 'info')
 
         db.session.commit()
-        flash('Gasto registrado.', 'success')
+        flash('Gasto registrado exitosamente.', 'success')
         return redirect(url_for('gastos.index'))
 
-    # Listar últimos gastos (excluyendo fantasmas para la vista por defecto, o marcándolos)
+    # Listar últimos gastos
     gastos = Gasto.query.order_by(Gasto.fecha.desc()).limit(50).all()
     return render_template('gastos.html', gastos=gastos, conceptos=conceptos, proveedores=proveedores, insumos=insumos, empleados=EMPLEADOS)
 
@@ -70,12 +80,10 @@ def index():
 @login_required
 @admin_required
 def factura_masiva():
-    # Procesar lista de items enviada por formulario
-    # Se asume que los inputs se llaman item_concepto[], item_subtotal[], item_iva_pct[], etc.
     try:
         conceptos = request.form.getlist('item_concepto')
         subtotales = request.form.getlist('item_subtotal')
-        ivas = request.form.getlist('item_iva_select') # 0, 5, 19
+        ivas = request.form.getlist('item_iva_select')
         descripciones = request.form.getlist('item_desc')
         
         origen = request.form.get('factura_origen')
@@ -114,7 +122,6 @@ def factura_masiva():
         
     return redirect(url_for('gastos.index'))
 
-# --- CRUD PROVEEDORES ---
 @gastos_bp.route('/proveedores', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -139,7 +146,6 @@ def proveedores():
             flash('Proveedor actualizado', 'info')
         elif accion == 'eliminar':
             p = Proveedor.query.get(request.form.get('id'))
-            # Soft delete mejor
             p.activo = False
             flash('Proveedor desactivado', 'warning')
             
@@ -147,7 +153,7 @@ def proveedores():
         return redirect(url_for('gastos.proveedores'))
         
     lista = Proveedor.query.filter_by(activo=True).all()
-    return render_template('gastos_proveedores.html', proveedores=lista) # Necesitas crear este template simple
+    return render_template('gastos_proveedores.html', proveedores=lista)
 
 @gastos_bp.route('/eliminar/<int:id>')
 @login_required
@@ -163,7 +169,6 @@ def eliminar(id):
 @login_required
 @admin_required
 def conceptos():
-    # Lógica original...
     if request.method == 'POST':
         nuevo = ConceptoGasto(
             nombre=request.form.get('nombre'),

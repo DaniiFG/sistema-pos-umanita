@@ -11,7 +11,7 @@
         .amount { font-family: 'Consolas', monospace; font-weight: bold; }
         .filtro-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .chart-container { position: relative; height: 350px; width: 100%; }
-        /* Estilo para la lista bonita de productos */
+        .chart-trend-container { position: relative; height: 300px; width: 100%; margin-top: 30px; }
         .product-list-box {
             max-height: 120px; 
             overflow-y: auto; 
@@ -178,6 +178,11 @@
                     </div>
                 </div>
             </div>
+
+            <div class="chart-trend-container bg-white p-3 rounded shadow-sm border mt-4">
+                <h6 class="fw-bold text-secondary text-center">📈 Tendencia de Ventas (Evolución Diaria)</h6>
+                <canvas id="chartVentasTendencia"></canvas>
+            </div>
         </div>
 
         <div class="tab-pane fade" id="gastos">
@@ -195,6 +200,11 @@
                         <canvas id="chartGastos"></canvas>
                     </div>
                 </div>
+            </div>
+
+            <div class="chart-trend-container bg-white p-3 rounded shadow-sm border mb-4">
+                <h6 class="fw-bold text-secondary text-center">📉 Tendencia de Gastos (Evolución Diaria)</h6>
+                <canvas id="chartGastosTendencia"></canvas>
             </div>
 
             <div class="card shadow-sm">
@@ -433,6 +443,7 @@
         maintainAspectRatio: false, 
     };
 
+    // Gráficos Circulares y de Barras Originales
     new Chart(document.getElementById('chartVentas'), {
         type: 'doughnut',
         data: { labels: {{ labels_ventas | tojson }}, datasets: [{ data: {{ data_ventas | tojson }}, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6610f2'] }] },
@@ -442,6 +453,56 @@
         type: 'bar',
         data: { labels: {{ labels_gastos | tojson }}, datasets: [{ label:'Gastos', data: {{ data_gastos | tojson }}, backgroundColor: '#dc3545' }] },
         options: { indexAxis: 'y', ...commonOptions }
+    });
+
+    // --- NUEVOS GRÁFICOS DE TENDENCIA (LÍNEA CON PUNTOS) ---
+    
+    // Tendencia Ventas
+    new Chart(document.getElementById('chartVentasTendencia'), {
+        type: 'line',
+        data: { 
+            labels: {{ labels_trend_ventas | tojson }}, 
+            datasets: [{ 
+                label: 'Ventas por Día ($)', 
+                data: {{ data_trend_ventas | tojson }}, 
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                tension: 0.1, // Línea ligeramente curva
+                fill: true,
+                pointRadius: 5, // Puntos visibles
+                pointHoverRadius: 7
+            }] 
+        },
+        options: {
+            ...commonOptions,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // Tendencia Gastos
+    new Chart(document.getElementById('chartGastosTendencia'), {
+        type: 'line',
+        data: { 
+            labels: {{ labels_trend_gastos | tojson }}, 
+            datasets: [{ 
+                label: 'Gastos por Día ($)', 
+                data: {{ data_trend_gastos | tojson }}, 
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                tension: 0.1,
+                fill: true,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }] 
+        },
+        options: {
+            ...commonOptions,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
     });
 </script>
 </body>

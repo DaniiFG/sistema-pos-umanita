@@ -76,7 +76,11 @@
                                 {% endfor %}
                             </select>
                         </div>
+
+                        <label class="fw-bold">Detalle / Descripción (Opcional)</label>
+                        <input type="text" name="detalle_adicional" class="form-control mb-3" placeholder="Ej: Taxi a la plaza, Compra de bombillos...">
                     </div>
+
                     <div class="col-md-6">
                         <label class="fw-bold">Método Pago</label>
                         <select class="form-select mb-2" name="metodo_pago" required>
@@ -112,7 +116,7 @@
                     <label class="form-check-label text-muted">👻 Gasto Fantasma (Solo descuenta caja)</label>
                 </div>
 
-                <button type="submit" class="btn btn-danger w-100">REGISTRAR</button>
+                <button type="submit" class="btn btn-danger w-100 fw-bold py-2">REGISTRAR GASTO</button>
             </form>
         </div>
     </div>
@@ -161,8 +165,8 @@
     <div class="card shadow">
         <div class="card-header">Últimos Movimientos</div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-hover mb-0 small">
-                <thead><tr><th>Fecha</th><th>Desc</th><th>Pago</th><th>Monto</th><th></th></tr></thead>
+            <table class="table table-hover mb-0 small align-middle">
+                <thead class="table-light"><tr><th>Fecha</th><th>Desc</th><th>Pago</th><th>Monto</th><th></th></tr></thead>
                 <tbody>
                     {% for g in gastos %}
                     <tr class="{{ 'table-secondary text-muted' if g.es_fantasma else '' }}">
@@ -170,11 +174,11 @@
                         <td>
                             {% if g.es_fantasma %}👻{% endif %}
                             <strong>{{ g.descripcion }}</strong><br>
-                            <span class="text-muted">{{ g.categoria }}</span>
+                            <span class="text-muted" style="font-size: 0.85em;">{{ g.categoria }}</span>
                         </td>
-                        <td>{{ g.metodo_pago }} <br> ({{ g.origen_dinero }})</td>
+                        <td>{{ g.metodo_pago }} <br> <span class="text-muted">({{ g.origen_dinero }})</span></td>
                         <td class="fw-bold text-danger">${{ "{:,.0f}".format(g.monto) }}</td>
-                        <td><a href="{{ url_for('gastos.eliminar', id=g.id) }}" class="text-danger">X</a></td>
+                        <td><a href="{{ url_for('gastos.eliminar', id=g.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Borrar?');"><i class="fas fa-trash"></i></a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -224,7 +228,7 @@
         tbody.appendChild(row);
     }
     // Iniciar con una fila
-    agregarFilaFactura();
+    if(document.getElementById('tabla-factura').children.length === 0) agregarFilaFactura();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

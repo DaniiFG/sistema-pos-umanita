@@ -23,29 +23,22 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
 
     # ==============================================================================
     # 1. VENTAS (Informe Comercial y P&G)
-    # Excluimos las ventas fantasma para que no alteren las estadísticas de producto
     # ==============================================================================
-    
-    # Base de la consulta: Detalles unidos a Ventas
     q_detalles = db.session.query(DetalleVenta, Venta).join(Venta).filter(
         Venta.fecha.between(f_ini, f_fin),
-        Venta.es_fantasma == False,  # EXCLUIR FANTASMAS
-        Venta.estado == 'Cerrada'    # Solo ventas cobradas
+        Venta.es_fantasma == False,
+        Venta.estado == 'Cerrada'
     )
 
-    # Aplicar filtros de Productos si existen
     if filtro_cat_prod:
-        # Nota: Esto filtra por la categoría ACTUAL del producto
         q_detalles = q_detalles.join(Producto, DetalleVenta.producto_id == Producto.id).filter(Producto.categoria == filtro_cat_prod)
     
     if filtro_prod_especifico:
-        # Manejo de lista o string único
         if isinstance(filtro_prod_especifico, str):
             filtro_prod_especifico = [filtro_prod_especifico]
-        # Filtramos por nombre histórico o actual
         q_detalles = q_detalles.filter(DetalleVenta.producto_nombre.in_(filtro_prod_especifico))
 
-    # Filtro por método de pago (solo afecta qué ventas se suman)
+    # Filtro de método de pago para VENTAS
     if filtro_metodo:
         if filtro_metodo == 'Efectivo': q_detalles = q_detalles.filter(Venta.pago_efectivo > 0)
         elif filtro_metodo == 'Nequi': q_detalles = q_detalles.filter(Venta.pago_nequi > 0)
@@ -53,31 +46,24 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
 
     resultados_detalles = q_detalles.all()
     
-    # Calcular Total Ventas (Comercial)
     total_ventas = sum([d.subtotal for d, v in resultados_detalles])
     
-    # Agrupación inteligente de productos (Por ID para soportar cambios de nombre)
     prod_stats = defaultdict(lambda: {'cant': 0, 'dinero': 0, 'categoria': '', 'nombre': ''})
     
     for d, v in resultados_detalles:
-        # Clave de agrupación: ID si existe, si no Nombre (para compatibilidad con datos viejos)
         key = d.producto_id if d.producto_id else d.producto_nombre
-        
-        # Determinar nombre y categoría actuales
         nombre_mostrar = d.producto_nombre
         cat_mostrar = "Sin Categoría"
         
-        # Intentamos obtener datos frescos del producto
-        if d.producto: # Si hay relación
+        if d.producto:
             nombre_mostrar = d.producto.nombre
             cat_mostrar = d.producto.categoria
-        elif d.producto_id: # Si hay ID pero no cargó relación (raro, pero por seguridad)
+        elif d.producto_id:
             p = Producto.query.get(d.producto_id)
             if p: 
                 nombre_mostrar = p.nombre
                 cat_mostrar = p.categoria
         else:
-            # Fallback legacy: buscar por nombre string antiguo
             p_legacy = Producto.query.filter_by(nombre=d.producto_nombre).first()
             if p_legacy:
                 cat_mostrar = p_legacy.categoria
@@ -87,24 +73,43 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
         prod_stats[key]['cant'] += d.cantidad
         prod_stats[key]['dinero'] += d.subtotal
 
-    # Convertir a lista y ordenar por dinero generado
     productos_vendidos = list(prod_stats.values())
     productos_vendidos.sort(key=lambda x: x['dinero'], reverse=True)
     
-    # Estadísticas por Categoría (Para Gráficos)
     cat_stats_ventas = defaultdict(int)
     for p in productos_vendidos:
         cat_stats_ventas[p['categoria']] += p['dinero']
 
+    # Tendencia Ventas
+    trend_ventas_dict = defaultdict(int)
+    ids_procesados = set()
+    for d, v in resultados_detalles:
+        if v.id not in ids_procesados:
+            fecha_str = v.fecha.strftime('%Y-%m-%d')
+            trend_ventas_dict[fecha_str] += v.total_venta
+            ids_procesados.add(v.id)
+            
+    fechas_ordenadas_ventas = sorted(trend_ventas_dict.keys())
+    data_trend_ventas = [trend_ventas_dict[f] for f in fechas_ordenadas_ventas]
+
     # ==============================================================================
-    # 2. GASTOS (Operativos y P&G)
-    # Excluimos gastos fantasma de los informes gerenciales
+    # 2. GASTOS
     # ==============================================================================
     q_gastos = Gasto.query.filter(
         Gasto.fecha.between(f_ini, f_fin),
-        Gasto.es_fantasma == False # EXCLUIR FANTASMAS DEL REPORTE
+        Gasto.es_fantasma == False
     )
     
+    # --- CORRECCIÓN: Filtro de método de pago para GASTOS ---
+    if filtro_metodo:
+        # Usamos 'like' para el efectivo porque en BD se guarda como "Efectivo Caja"
+        if filtro_metodo == 'Efectivo': 
+            q_gastos = q_gastos.filter(Gasto.metodo_pago.like('%Efectivo%'))
+        elif filtro_metodo == 'Nequi': 
+            q_gastos = q_gastos.filter(Gasto.metodo_pago == 'Nequi')
+        elif filtro_metodo == 'Daviplata': 
+            q_gastos = q_gastos.filter(Gasto.metodo_pago == 'Daviplata')
+
     if filtro_cat_gasto: q_gastos = q_gastos.filter(Gasto.categoria == filtro_cat_gasto)
     if filtro_concepto: q_gastos = q_gastos.filter(Gasto.descripcion == filtro_concepto)
     if filtro_proveedor: q_gastos = q_gastos.filter(Gasto.proveedor_id == filtro_proveedor)
@@ -112,59 +117,57 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
     lista_gastos = q_gastos.order_by(Gasto.fecha.desc()).all()
     total_gastos = sum([g.monto for g in lista_gastos])
 
-    # Agrupación por categoría para gráficos
     cat_stats_gastos = defaultdict(lambda: {'monto': 0, 'detalles': defaultdict(int)})
     for g in lista_gastos:
         cat_stats_gastos[g.categoria]['monto'] += g.monto
-        cat_stats_gastos[g.categoria]['detalles'][g.descripcion] += g.monto
+        # Ahora usamos la observación real si existe, o el concepto base
+        detalle_mostrar = g.descripcion
+        if g.observacion:
+            detalle_mostrar += f" ({g.observacion})"
+        cat_stats_gastos[g.categoria]['detalles'][detalle_mostrar] += g.monto
+
+    # Tendencia Gastos
+    trend_gastos_dict = defaultdict(int)
+    for g in lista_gastos:
+        fecha_str = g.fecha.strftime('%Y-%m-%d')
+        trend_gastos_dict[fecha_str] += g.monto
+        
+    fechas_ordenadas_gastos = sorted(trend_gastos_dict.keys())
+    data_trend_gastos = [trend_gastos_dict[f] for f in fechas_ordenadas_gastos]
 
     # ==============================================================================
-    # 3. CIERRE DE CAJA (REALIDAD FINANCIERA)
-    # Aquí INCLUIMOS FANTASMAS porque el dinero real sí se movió de la caja
+    # 3. CIERRE DE CAJA
     # ==============================================================================
-    
-    # Traer TODO lo del rango
     todas_ventas = Venta.query.filter(Venta.fecha.between(f_ini, f_fin), Venta.estado == 'Cerrada').all()
     todos_gastos = Gasto.query.filter(Gasto.fecha.between(f_ini, f_fin)).all()
     todos_ingresos = IngresoOcasional.query.filter(IngresoOcasional.fecha.between(f_ini, f_fin)).all()
 
-    # --- INGRESOS (VENTAS) ---
-    # Corrección Clave: Efectivo Real = (Billete Entregado - Cambio)
     v_efec_neto = sum((v.pago_efectivo - v.cambio_dado) for v in todas_ventas if v.pago_efectivo > 0)
     v_nequi = sum(v.pago_nequi for v in todas_ventas)
     v_davi = sum(v.pago_daviplata for v in todas_ventas)
     
-    # --- EGRESOS (GASTOS) ---
-    # Detectamos método por string (ej: "Efectivo Caja", "Nequi", etc.)
     g_efec = sum(g.monto for g in todos_gastos if 'Efectivo' in (g.metodo_pago or ''))
     g_nequi = sum(g.monto for g in todos_gastos if 'Nequi' in (g.metodo_pago or ''))
     g_davi = sum(g.monto for g in todos_gastos if 'Daviplata' in (g.metodo_pago or ''))
     
-    # --- OTROS INGRESOS (BASE, APORTES) ---
     i_efec = sum(i.monto for i in todos_ingresos if 'Efectivo' in (i.metodo_pago or ''))
     i_nequi = sum(i.monto for i in todos_ingresos if 'Nequi' in (i.metodo_pago or ''))
     i_davi = sum(i.monto for i in todos_ingresos if 'Davi' in (i.metodo_pago or ''))
 
-    # --- CÁLCULO FINAL DE SALDOS ---
     cierre_efectivo = (v_efec_neto + i_efec) - g_efec
     cierre_nequi = (v_nequi + i_nequi) - g_nequi
     cierre_davi = (v_davi + i_davi) - g_davi
-    
-    # Nuevo Requerimiento: Total Unificado
     total_caja_unificado = cierre_efectivo + cierre_nequi + cierre_davi
 
-    # Detalles para mostrar en acordeón (solo los relevantes)
-    detalles_ventas = todas_ventas # Se envían todas para auditoría de caja
+    detalles_ventas = todas_ventas
     detalles_gastos = todos_gastos
     detalles_otros = todos_ingresos
 
     # ==============================================================================
-    # 4. P & G (Estado de Resultados Aproximado)
+    # 4. P & G
     # ==============================================================================
     costo_ventas = 0
-    # Usamos la lista 'resultados_detalles' que ya excluye fantasmas
     for d, v in resultados_detalles:
-        # Calcular costo basado en el producto
         costo_unitario = 0
         if d.producto:
             costo_unitario = d.producto.costo_referencia
@@ -172,7 +175,6 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
             p = Producto.query.get(d.producto_id)
             if p: costo_unitario = p.costo_referencia
         else:
-            # Legacy
             p_leg = Producto.query.filter_by(nombre=d.producto_nombre).first()
             if p_leg: costo_unitario = p_leg.costo_referencia
             
@@ -180,8 +182,6 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
 
     utilidad_bruta = total_ventas - costo_ventas
     utilidad_neta = utilidad_bruta - total_gastos
-    
-    # Nuevo Requerimiento: Neto del día (Ventas Reales - Gastos Reales del periodo seleccionado)
     neto_dia = total_ventas - total_gastos
 
     return {
@@ -190,13 +190,13 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
         'productos': productos_vendidos,
         'cat_stats_ventas': cat_stats_ventas,
         'total_gastos': total_gastos, 
-        'lista_gastos': lista_gastos, # Lista filtrada (sin fantasmas) para informe visual
+        'lista_gastos': lista_gastos,
         'cat_stats_gastos': cat_stats_gastos,
         'cierre_efectivo': cierre_efectivo, 
         'cierre_nequi': cierre_nequi, 
         'cierre_davi': cierre_davi,
         'total_caja_unificado': total_caja_unificado, 
-        'balance_total': total_caja_unificado, # <--- RESTAURADO PARA COMPATIBILIDAD CON INFORME CONTABLE
+        'balance_total': total_caja_unificado,
         'detalles_ventas': detalles_ventas, 
         'detalles_gastos': detalles_gastos, 
         'detalles_otros': detalles_otros,
@@ -204,7 +204,11 @@ def _obtener_data_informes(fecha_inicio, fecha_fin, **kwargs):
         'utilidad_bruta': utilidad_bruta, 
         'utilidad_neta': utilidad_neta,
         'neto_dia': neto_dia,
-        'ventas_dia': total_ventas # Alias para claridad en template
+        'ventas_dia': total_ventas,
+        'labels_trend_ventas': fechas_ordenadas_ventas,
+        'data_trend_ventas': data_trend_ventas,
+        'labels_trend_gastos': fechas_ordenadas_gastos,
+        'data_trend_gastos': data_trend_gastos
     }
 
 @informes_bp.route('/', methods=['GET', 'POST'])
@@ -215,7 +219,6 @@ def index():
     fecha_inicio = request.form.get('fecha_inicio', default=hoy.strftime('%Y-%m-%d'))
     fecha_fin = request.form.get('fecha_fin', default=hoy.strftime('%Y-%m-%d'))
     
-    # Recoger filtros
     filtros = {
         'filtro_metodo': request.form.get('filtro_metodo', ''),
         'filtro_cat_prod': request.form.get('filtro_categoria_prod', ''),
@@ -227,17 +230,14 @@ def index():
     
     tab_activa = request.form.get('tab_activa', 'ventas')
 
-    # Datos para selects de filtros
     cats_prod = [c[0] for c in db.session.query(Producto.categoria).distinct()]
     list_prod = [p[0] for p in db.session.query(Producto.nombre).distinct().order_by(Producto.nombre)]
     cats_gasto = [c[0] for c in db.session.query(ConceptoGasto.categoria).distinct()]
     list_conceptos = [c[0] for c in db.session.query(ConceptoGasto.nombre).distinct()]
     proveedores = Proveedor.query.filter_by(activo=True).all()
 
-    # Obtener toda la data procesada
     data = _obtener_data_informes(fecha_inicio, fecha_fin, **filtros)
 
-    # Preparar datos para Gráficos JS (listas simples)
     labels_ventas = list(data['cat_stats_ventas'].keys())
     data_ventas = list(data['cat_stats_ventas'].values())
     
@@ -263,7 +263,6 @@ def index():
 @login_required
 @admin_required
 def reporte_ventas(tipo):
-    # Recuperar filtros del form para regenerar data
     data = _obtener_data_informes(
         request.form.get('fecha_inicio'), request.form.get('fecha_fin'), 
         filtro_metodo=request.form.get('filtro_metodo'), 
@@ -340,7 +339,6 @@ def reporte_gastos(tipo):
 @login_required
 @admin_required
 def reporte_pyg():
-    # Recalcular todo con los filtros actuales para imprimir P&G
     data = _obtener_data_informes(
         request.form.get('fecha_inicio'), request.form.get('fecha_fin'), 
         filtro_metodo=request.form.get('filtro_metodo'), 
